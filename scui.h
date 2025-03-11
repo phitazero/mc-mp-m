@@ -1,7 +1,10 @@
 #include <conio.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define C_RESET "\e[0m"
-#define C_SELECTED "\e[47m\e[0;30m"
+#define C_SELECTED "\e[30;47m"
 
 #define KEY_ENTER 13
 #define KEY_ESC 27
@@ -17,22 +20,23 @@ int multichoice(int n_options, char* options[], char* preText) {
 		if (preText) printf("%s\n", preText);
 
 		for (int i = 0; i < n_options; i++) {
-			if (i == current) printf(C_SELECTED);
-			printf("[%d] > %s <\n", i, options[i]);
-			printf(C_RESET);
+			char color[8];
+			if (i == current) strcpy(color, C_SELECTED);
+			else strcpy(color, C_RESET);
+			printf("[%d] > %s%s%s <\n", i, color, options[i], C_RESET);
 		}
 
-		char input = getch();
+		unsigned char input = getch();
 		if (input == KEY_ENTER) return current;
 		else if (input == KEY_ESC) return -1; // used only in case of a softlock
 		else if (input == 224) { // KEY_UP and KEY_DOWN are 2 bytes wide, so we need a second getch()
-			char input2 = getch();
-			// KEY_DOWN
-			if (input2 == 72 && current < n_options - 1) current++;
+			unsigned char input2 = getch();
 			// KEY_UP
-			else if (input2 == 80 && current > 0) current--;
+			if (input2 == 80 && current < n_options - 1) current++;
+			// KEY_DOWN
+			else if (input2 == 72 && current > 0) current--;
 		}
-		else if ('0' < input && input < '9') {
+		else if ('0' <= input && input <= '9') {
 			int index = input - '0'; // convert ['0'-'9'] to [0-9]
 			if (index < n_options) current = index;
 		}
