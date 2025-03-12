@@ -1,3 +1,5 @@
+// to work with files (specifically .jar's)
+
 #include <windows.h>
 #include <stdio.h>
 #include <string.h>
@@ -7,11 +9,12 @@
 // bring everything to camelCase
 #define copyFile CopyFile
 
+// get number of .jar's in a directory
 int getNJars(const char* directory) {
 	WIN32_FIND_DATA findFileData;
 
-	char path[512];
-	snprintf(path, 512, "%s\\*.jar", directory);
+	char path[MAX_PATH_LENGTH];
+	snprintf(path, MAX_PATH_LENGTH, "%s\\*.jar", directory);
 
 	HANDLE handleFind = FindFirstFile(path, &findFileData);
 	if (handleFind == INVALID_HANDLE_VALUE) return 0;
@@ -24,6 +27,8 @@ int getNJars(const char* directory) {
 	return n_jars;
 }
 
+// puts the pointer to the array of pointers to malloc()'ed into out_jars
+// MUST BE FREE()'D
 int findJars(const char* directory, char** out_jars) {
 	WIN32_FIND_DATA findFileData;
 
