@@ -11,20 +11,22 @@
 
 // n_sth - number of sth, e.g. n_options - number of options 
 
-int multichoice(int n_options, char* options[], char* preText) {
+int multichoice(int n_options, char* options[], char* postText) {
 	if (n_options < 1) return -1;
 
 	int current = 0;	
 	for (;;) {
 		system("cls");
-		if (preText) printf("%s\n", preText);
 
 		for (int i = 0; i < n_options; i++) {
 			char color[8];
 			if (i == current) strcpy(color, C_SELECTED);
 			else strcpy(color, C_RESET);
-			printf("[%d] > %s%s%s <\n", i, color, options[i], C_RESET);
+			printf("[%d] %s%s\n", i, color, options[i]);
+			printf(C_RESET);
 		}
+
+		if (preText) printf("\n%s\n", preText);
 
 		unsigned char input = getch();
 		if (input == KEY_ENTER) return current;
