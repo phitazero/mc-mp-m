@@ -1,7 +1,6 @@
 // to work with files (specifically .jar's)
 
 #include <windows.h>
-#include <stdio.h>
 #include <string.h>
 
 #define MAX_PATH_LENGTH 256
