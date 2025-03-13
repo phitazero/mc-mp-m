@@ -28,7 +28,7 @@ int getNJars(const char* directory) {
 }
 
 // puts the pointer to the array of pointers to malloc()'ed into out_jars
-// MUST BE FREE()'D
+// must be NECESSARILY free()'d
 int findJars(const char* directory, char** out_jars) {
 	WIN32_FIND_DATA findFileData;
 
@@ -47,5 +47,6 @@ int findJars(const char* directory, char** out_jars) {
 		out_jars[i] = filename;
 		FindNextFile(handleFind, &findFileData);
 	}
+	
 	return 0;
 }
