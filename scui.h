@@ -14,19 +14,19 @@
 int multichoice(int n_options, char* options[], char* postText) {
 	if (n_options < 1) return -1;
 
-	int current = 0;	
+	int current = 0; // index of currently selected option
 	for (;;) {
 		system("cls");
 
 		for (int i = 0; i < n_options; i++) {
-			char color[8];
+			char color[9];
 			if (i == current) strcpy(color, C_SELECTED);
 			else strcpy(color, C_RESET);
 			printf("[%d] %s%s\n", i, color, options[i]);
 			printf(C_RESET);
 		}
 
-		if (preText) printf("\n%s\n", preText);
+		if (postText) printf("\n%s\n", postText);
 
 		unsigned char input = getch();
 		if (input == KEY_ENTER) return current;
