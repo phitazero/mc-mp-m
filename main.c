@@ -2,14 +2,14 @@
 #include "jars.h"
 #include "scui.h"
 
-char helpText[] =
-#include "helptext.txt" 
+void printHelpText(char* filename) {
+	printf("here comes the help text, btw the filename is %s", filename); // TEMPORARY
+}
 
-
-int main(int argc, char const *argv[])
+int main(int argc, char *argv[])
 {
 	if (argc == 1) {
-		printf(helpText);
+		printHelpText(argv[0]);
 		return 0;
 	}
 
