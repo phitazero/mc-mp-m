@@ -14,21 +14,17 @@
 #define C_YELLOW "\e[0;33m"
 #define C_RESET "\e[0m"
 
+// status codes
+#define SUCCESS 0
+#define SUCCESS_ALT 1
+#define ERR_OPERATION_FAIL -1
+#define ERR_ALREADY_EXISTS -2
+#define ERR_NOT_FOUND -3
+
+
 char MINECRAFT_DIRECTORY[MAX_PATH_LENGTH];
 char MODPACKS_DIRECTORY[MAX_PATH_LENGTH];
 
-void printHelpText(char* filename) {
-	printf("here comes the help text, btw the filename is %s", filename); // TEMPORARY
-}
-
-/*
-Initialization
-Return codes:
--2 couldn't create vanilla.mp: fatal error
--1 no .minecraft folder: fatal error
-0 mcmpm-modpacks and vanilla.mp found: success
-1 mcmpm-modpacks and vanilla.mp created: success
-*/
 int init(char* username) {
 	// set the constants
 	// replace %s with <user> in path templates
@@ -42,7 +38,7 @@ int init(char* username) {
 	// C:\Users\<user>\AppData\Roaming\.minecraft\clientId.txt
 
 	file = fopen(path, "r");
-	if (file == NULL) return -1; // if clientId.txt doesn't exist then .minecraft folder does neither
+	if (file == NULL) return ERR_NOT_FOUND; // if clientId.txt doesn't exist then .minecraft folder does neither
 	fclose(file);
 
 	snprintf(path, MAX_PATH_LENGTH, "%svanilla.mp", MODPACKS_DIRECTORY);
@@ -50,7 +46,7 @@ int init(char* username) {
 	// C:\Users\<user>\AppData\Roaming\.minecraft\mods\mcmpm-modpacks\vanilla.mp
 
 	file = fopen(path, "r");
-	if (file != NULL) return 0; // if vanilla.mp modpack exists then modpacks folder does either
+	if (file != NULL) return SUCCESS; // if vanilla.mp modpack exists then modpacks folder does either
 	fclose(file);
 	
 	int maxCmdLength = MAX_PATH_LENGTH + 8;
@@ -62,17 +58,21 @@ int init(char* username) {
 
 	// create the vanilla.mp modpack
 	file = fopen(path, "w");
-	if (file == NULL) return -2;
+	if (file == NULL) return ERR_OPERATION_FAIL;
 	fclose(file);
 
-	return 1;
+	return SUCCESS_ALT;
+}
+
+void printHelpText(char* filename) {
+	printf("here comes the help text, btw the filename is %s", filename); // TEMPORARY
 }
 
 void freeStrArray(char** array, int n_items) {
 	for (int i = 0; i < n_items; i++) {free(array[i]);}
 } 
 
-int listModpacks() {
+void listModpacks() {
 	int n_modpacks = getNFiles(MODPACKS_DIRECTORY, "mp");
 	char* modpacks[n_modpacks];
 	findFiles(MODPACKS_DIRECTORY, "mp", n_modpacks, modpacks);
@@ -84,7 +84,6 @@ int listModpacks() {
 		printf("    %s\n", modpackName);
 	}
 	freeStrArray(modpacks, n_modpacks); // freeing memory because it's good to free memory
-	return 0;
 }
 
 int createModpack(char* name) {
@@ -97,13 +96,13 @@ int createModpack(char* name) {
 
 	// check if modpack to be created already exists
 	file = fopen(path, "r");
-	if (file != NULL) { return -1; } // modpack file already exists
+	if (file != NULL) { return ERR_ALREADY_EXISTS; }
 	fclose(file);
 
 	file = fopen(path, "w");
-	if (file == NULL) { return -2; } // couldn't create file
+	if (file == NULL) { return ERR_OPERATION_FAIL; } // couldn't create file
 
-	return 0;
+	return SUCCESS;
 }
 
 int deleteModpack(char* name) {
@@ -116,13 +115,13 @@ int deleteModpack(char* name) {
 
 	// check if modpack exists
 	file = fopen(path, "r");
-	if (file == NULL) { return -1; }
+	if (file == NULL) { return ERR_ALREADY_EXISTS; }
 	fclose(file);
 
 	int status = remove(path);
-	if (status != 0) { return -2; } // if failed to remove
+	if (status != 0) { return ERR_OPERATION_FAIL; } // if failed to remove
 
-	return 0;
+	return SUCCESS;
 }
 
 
@@ -147,14 +146,14 @@ int main(int argc, char* argv[])
 
 	// INITIALISATION
 	int status = init(username);
-	if (status == -2) {
+	if (status == ERR_OPERATION_FAIL) {
 		printf("%sFatal error: Couldn't create vanilla.mp (default modpack).%s", C_LRED, C_RESET);
-	} else if (status == -1) {	
+	} else if (status == ERR_NOT_FOUND) {	
 		printf("%sFatal error: No .minecraft folder found.%s\n", C_LRED, C_RESET);
 		return 0;
-	} else if (status == 0) {
+	} else if (status == SUCCESS) {
 		printf("Found an existing configuration.\n");
-	} else if (status == 1) {
+	} else if (status == SUCCESS_ALT) {
 		printf("\nConfiguration not found. Created a new one.\n");
 	}
 
@@ -164,8 +163,8 @@ int main(int argc, char* argv[])
 	if (argc == 2) {
 		char* command = argv[1];
 
-		if (strcmp(command, "list") == 0) {listModpacks();}
-		// more command handlers here
+		if (strcmp(command, "list") == 0) { listModpacks(); }
+		else if (strcmp(command, "help") == 0) { printHelpText(filename); }
 
 	} else if (argc == 3) {
 		char* command = argv[1];
@@ -173,15 +172,15 @@ int main(int argc, char* argv[])
 
 		if (strcmp(command, "create") == 0) {
 			int status = createModpack(arg);
-			if (status == -2) { printf("%sFatal error: couldn't create %s.mp%s", C_LRED, arg, C_RESET); }
-			else if (status == -1) { printf("%sFatal error: '%s' already exists!%s", C_LRED, arg, C_RESET); }
-			else if (status == 0) { printf("Successfully created '%s'.", arg); }
+			if (status == ERR_OPERATION_FAIL) { printf("%sFatal error: couldn't create %s.mp%s", C_LRED, arg, C_RESET); }
+			else if (status == ERR_ALREADY_EXISTS) { printf("%sFatal error: '%s' already exists!%s", C_LRED, arg, C_RESET); }
+			else if (status == SUCCESS) { printf("Successfully created '%s'.", arg); }
 
 		} else if (strcmp(command, "delete") == 0) {
 			int status = deleteModpack(arg);
-			if (status == -2) { printf("%sFatal error: couldn't delete '%s'%s", C_LRED, arg, C_RESET); }
-			else if (status == -1) { printf("%sFatal error: '%s' doesn't exist!%s", C_LRED, arg, C_RESET); }
-			else if (status == 0) { printf("Successfully deleted '%s'.", arg); }
+			if (status == ERR_OPERATION_FAIL) { printf("%sFatal error: couldn't delete '%s'%s", C_LRED, arg, C_RESET); }
+			else if (status == ERR_NOT_FOUND) { printf("%sFatal error: '%s' doesn't exist!%s", C_LRED, arg, C_RESET); }
+			else if (status == SUCCESS) { printf("Successfully deleted '%s'.", arg); }
 		}
 
 		// more command handlers here
