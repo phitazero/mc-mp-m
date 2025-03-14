@@ -8,6 +8,12 @@
 // bring everything to camelCase
 #define copyFile CopyFile
 
+/*
+TODO:
+implement getNLines
+impleemnt readLines
+*/
+
 // get number of .<ext> files in a directory
 int getNFiles(char* directory, char ext[]) {
 	WIN32_FIND_DATA findFileData;
@@ -44,4 +50,12 @@ int findFiles(char* directory, char ext[], int n_files, char** out_files) {
 	}
 	
 	return 0;
+}
+
+int getFileLength(FILE* file) {
+	int offset = ftell(file);
+	fseek(file, 0, SEEK_END);
+	int length = ftell(file);
+	fseek(file, offset, SEEK_SET);
+	return length;
 }
