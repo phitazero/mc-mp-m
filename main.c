@@ -70,11 +70,65 @@ int init(char* username) {
 
 void freeStrArray(char** array, int n_items) {
 	for (int i = 0; i < n_items; i++) {free(array[i]);}
+} 
+
+int listModpacks() {
+	int n_modpacks = getNFiles(MODPACKS_DIRECTORY, "mp");
+	char* modpacks[n_modpacks];
+	findFiles(MODPACKS_DIRECTORY, "mp", n_modpacks, modpacks);
+	printf("Modpacks:\n");
+	for (int i = 0; i < n_modpacks; i++) {
+		char modpackName[strlen(modpacks[i])];
+		strcpy(modpackName, modpacks[i]);
+		modpackName[strlen(modpackName) - 3] = '\0'; // trim the .mp extension
+		printf("    %s\n", modpackName);
+	}
+	freeStrArray(modpacks, n_modpacks); // freeing memory because it's good to free memory
+	return 0;
 }
+
+int createModpack(char* name) {
+	char path[MAX_PATH_LENGTH];
+	snprintf(path, MAX_PATH_LENGTH, "%s%s.mp", MODPACKS_DIRECTORY, name);
+	// the path should look like:
+	// C:\Users\<user>\AppData\Roaming\.minecraft\mods\mcmpm-modpacks\<modpack name>.mp
+
+	FILE* file;
+
+	// check if modpack to be created already exists
+	file = fopen(path, "r");
+	if (file != NULL) { return -1; } // modpack file already exists
+	fclose(file);
+
+	file = fopen(path, "w");
+	if (file == NULL) { return -2; } // couldn't create file
+
+	return 0;
+}
+
+int deleteModpack(char* name) {
+	char path[MAX_PATH_LENGTH];
+	snprintf(path, MAX_PATH_LENGTH, "%s%s.mp", MODPACKS_DIRECTORY, name);
+	// the path should look like:
+	// C:\Users\<user>\AppData\Roaming\.minecraft\mods\mcmpm-modpacks\<modpack name>.mp
+
+	FILE* file;
+
+	// check if modpack exists
+	file = fopen(path, "r");
+	if (file == NULL) { return -1; }
+	fclose(file);
+
+	int status = remove(path);
+	if (status != 0) { return -2; } // if failed to remove
+
+	return 0;
+}
+
 
 int main(int argc, char* argv[])
 {
-	// INITIALISATION
+	// PRE INITIALISATION (some important constants)
 	char* filename = argv[0];
 
 	char username[MAX_USERNAME_LENGTH];
@@ -91,9 +145,8 @@ int main(int argc, char* argv[])
 		}
 	} while (usernameLength != strlen(username) + 1);
 
-	char status; // not a character, just 1 byte
-	status = init(username);
-	
+	// INITIALISATION
+	int status = init(username);
 	if (status == -2) {
 		printf("%sFatal error: Couldn't create vanilla.mp (default modpack).%s", C_LRED, C_RESET);
 	} else if (status == -1) {	
@@ -105,89 +158,36 @@ int main(int argc, char* argv[])
 		printf("\nConfiguration not found. Created a new one.\n");
 	}
 
+	puts(""); // new line because why not
 
 	// COMMAND HANDLING
 	if (argc == 2) {
 		char* command = argv[1];
 
-		if (strcmp(command, "list") == 0) {
-			int n_modpacks = getNFiles(MODPACKS_DIRECTORY, "mp");
-			char* modpacks[n_modpacks];
-			findFiles(MODPACKS_DIRECTORY, "mp", n_modpacks, modpacks);
-			printf("Modpacks:\n");
-			for (int i = 0; i < n_modpacks; i++) {
-				char modpackName[strlen(modpacks[i])];
-				strcpy(modpackName, modpacks[i]);
-				modpackName[strlen(modpackName) - 3] = '\0'; // trim the .mp extension
-				printf("    %s\n", modpackName);
-			}
-			freeStrArray(modpacks, n_modpacks); // freeing memory because it's good to free memory
-			return 0;
-		}
-
+		if (strcmp(command, "list") == 0) {listModpacks();}
 		// more command handlers here
+
 	} else if (argc == 3) {
 		char* command = argv[1];
 		char* arg = argv[2];
 
 		if (strcmp(command, "create") == 0) {
-			char path[MAX_PATH_LENGTH];
-			snprintf(path, MAX_PATH_LENGTH, "%s%s.mp", MODPACKS_DIRECTORY, arg);
-			// the path should look like:
-			// C:\Users\<user>\AppData\Roaming\.minecraft\mods\mcmpm-modpacks\<modpack name>.mp
-
-			FILE* file;
-
-			// check if modpack to be created already exists
-			file = fopen(path, "r");
-			if (file != NULL) {
-				printf("%sFatal error: '%s' already exists!%s", C_LRED, arg, C_RESET);
-				return 0;
-			}
-			fclose(file);
-
-			file = fopen(path, "w");
-			if (file == NULL) {
-				printf("%sFatal error: couldn't create %s.mp%s", C_LRED, arg, C_RESET);
-				return 0;
-			}
-
-			printf("Successfully created '%s'.", arg);
-
-			return 0;
+			int status = createModpack(arg);
+			if (status == -2) { printf("%sFatal error: couldn't create %s.mp%s", C_LRED, arg, C_RESET); }
+			else if (status == -1) { printf("%sFatal error: '%s' already exists!%s", C_LRED, arg, C_RESET); }
+			else if (status == 0) { printf("Successfully created '%s'.", arg); }
 
 		} else if (strcmp(command, "delete") == 0) {
-			char path[MAX_PATH_LENGTH];
-			snprintf(path, MAX_PATH_LENGTH, "%s%s.mp", MODPACKS_DIRECTORY, arg);
-			// the path should look like:
-			// C:\Users\<user>\AppData\Roaming\.minecraft\mods\mcmpm-modpacks\<modpack name>.mp
-
-			FILE* file;
-
-			// check if modpack to be created already exists
-			file = fopen(path, "r");
-			if (file == NULL) {
-				printf("%sFatal error: '%s' doesn't exist!%s", C_LRED, arg, C_RESET);
-				return 0;
-			}
-			fclose(file);
-
-			// not a character, but 1 byte
-			char status = remove(path);
-			if (status != 0) {
-				printf("%sFatal error: couldn't delete '%s'%s", C_LRED, arg, C_RESET);
-				return 0;
-			}
-
-			printf("Successfully deleted '%s'.", arg);
-
-			return 0;
+			int status = deleteModpack(arg);
+			if (status == -2) { printf("%sFatal error: couldn't delete '%s'%s", C_LRED, arg, C_RESET); }
+			else if (status == -1) { printf("%sFatal error: '%s' doesn't exist!%s", C_LRED, arg, C_RESET); }
+			else if (status == 0) { printf("Successfully deleted '%s'.", arg); }
 		}
 
 		// more command handlers here
 	}
 
-	printf("\n"); // because why not
+	puts(""); // another new line because why not
 
 	// NOT FINISHED
 	return 0;
