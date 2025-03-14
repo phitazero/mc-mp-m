@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <windows.h>
-#include "jars.h"
+#include "files.h"
 #include "scui.h"
 
 #define MAX_USERNAME_LENGTH 256
@@ -20,12 +20,11 @@ void printHelpText(char* filename) {
 Initialization
 Return codes:
 -1 no .minecraft folder: fatal error
-0 mcmpm-modpacks and vanilla found: success
-1 mcmpm-modpacks and vanilla created: success
+0 mcmpm-modpacks and vanilla.mp found: success
+1 mcmpm-modpacks and vanilla.mp created: success
 */
 int init(char* username) {
 	FILE* file;
-
 	char path[MAX_PATH_LENGTH];
 	char buffer[MAX_PATH_LENGTH];
 	strcpy(path, MINECRAFT_FOLDER_PATH);
@@ -40,12 +39,12 @@ int init(char* username) {
 
 	strcpy(path, MODPACKS_FOLDER_PATH);
 	snprintf(buffer, MAX_PATH_LENGTH, path, username); // replace %s with <user> in path
-	snprintf(path, MAX_PATH_LENGTH, "%svanilla", buffer);
+	snprintf(path, MAX_PATH_LENGTH, "%svanilla.mp", buffer);
 	// the path should look like:
-	// C:\Users\<user>\AppData\Roaming\.minecraft\mods\mcmpm-modpacks\vanilla
+	// C:\Users\<user>\AppData\Roaming\.minecraft\mods\mcmpm-modpacks\vanilla.mp
 
 	file = fopen(path, "r");
-	if (file != NULL) return 0; // if vanilla modpack exists then modpacks folder does either
+	if (file != NULL) return 0; // if vanilla.mp modpack exists then modpacks folder does either
 	fclose(file);
 
 	char folderPath[MAX_PATH_LENGTH];
@@ -61,31 +60,37 @@ int init(char* username) {
 	snprintf(cmd, maxCmdLength, "mkdir \"%s\"", folderPath);
 	system(cmd);
 
-	// creating the vanilla modpack
+	// creating the vanilla.mp modpack
 	snprintf(cmd, maxCmdLength, "copy /Y NUL \"%s\"", path);
 	system(cmd);
 
 	return 1;
 }
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
+	char* filename = argv[0];
+
+	// display help if program runned without args
+	if (argc == 1) {
+		printHelpText(filename);
+		return 0;
+	}
+
 	char username[MAX_USERNAME_LENGTH];
 	unsigned long usernameLength; // dummy, not used anywhere, required for GetUserName
 	GetUserName(username, &usernameLength);
 
-	char* filename = argv[0];
-
-
+	// INITIALISATION
 	char status; // not a character, just 1 byte
 	status = init(username);
 	if (status == -1) {	
-		printf("%sFatal error: No .minecraft folder found!%s", C_RED, C_RESET);
+		printf("%sFatal error: No .minecraft folder found!%s\n", C_RED, C_RESET);
 		return 0;
 	} else if (status == 0) {
-		printf("Found an existing configuration");
+		printf("Found an existing configuration.\n");
 	} else if (status == 1) {
-		printf("Configuration not found. Created a new one.");
+		printf("\nConfiguration not found. Created a new one.\n");
 	}
 
 	// NOT FINISHED
