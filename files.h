@@ -27,7 +27,6 @@ int getNFiles(char* directory, char ext[]) {
 }
 
 // puts the pointer to the array of pointers to malloc()'ed filenames of .<ext> files into out_files
-// out_files must be NECESSARILY free()'d
 int findFiles(char* directory, char ext[], int n_files, char** out_files) {
 	WIN32_FIND_DATA findFileData;
 
