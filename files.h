@@ -52,11 +52,38 @@ int findFiles(char* directory, char ext[], int n_files, char** out_files) {
 	return 0;
 }
 
+// opens file ignoring '\r's
+FILE* fopenNoCR(char* filename, char* mode) {
+	if (!mode || mode[0] != 'r') {
+		return fopen(filename, mode);  // we care only about reading
+	}
+
+	FILE* originalFile = fopen(filename, "rb");  // open in binary to see '\r'
+	if (!originalFile) return NULL;
+
+	FILE* tempFile = tmpfile();
+	if (!tempFile) {
+		fclose(originalFile);
+		return NULL;
+	}
+
+	// copy ignoring '\r'
+	char c;
+	while ((c = fgetc(originalFile)) != EOF) {
+		if (c != '\r') fputc(c, tempFile);
+	}
+
+	fclose(originalFile);
+	rewind(tempFile); // prepare for further usage
+
+	return tempFile;
+}
+
+
 int getFileLength(FILE* file) {
-	int offset = ftell(file);
 	fseek(file, 0, SEEK_END);
 	int length = ftell(file);
-	fseek(file, offset, SEEK_SET);
+	rewind(file);
 	return length;
 }
 
@@ -65,9 +92,36 @@ int getNLines(FILE* file) {
 
 	char buffer[fileLength];
 	fread(buffer, 1, fileLength, file);
+	rewind(file);
 
 	int n_lines = 1;
 	for (int i = 0; i < fileLength; i++) n_lines += (buffer[i] == '\n');
 
 	return n_lines;
+}
+
+int freadLines(char** out, int n_lines, FILE* file) {
+	int fileLength = getFileLength(file);
+
+	char buffer[fileLength];
+	fread(buffer, 1, fileLength, file);
+	rewind(file);
+
+	char* p = buffer;
+	for (int i = 0; i < n_lines; i++) {
+		int lineLength;
+		for (lineLength = 0; !(p[lineLength] == '\n' || (int)(p - buffer) + lineLength == fileLength); lineLength++);
+		lineLength++; // the for loop doesn't consider the '\n' (or EOF) at the end
+					// manually add a byte for '\0'
+
+
+
+		char* line = malloc(lineLength);
+		memcpy(line, p, lineLength);
+		line[lineLength - 1] = '\0'; // replace '\n' or EOF with '\0'
+		out[i] = line;
+
+		p += lineLength; // move on to the next line
+	}
+
 }
