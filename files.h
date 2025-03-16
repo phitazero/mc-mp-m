@@ -59,3 +59,15 @@ int getFileLength(FILE* file) {
 	fseek(file, offset, SEEK_SET);
 	return length;
 }
+
+int getNLines(FILE* file) {
+	int fileLength = getFileLength(file);
+
+	char buffer[fileLength];
+	fread(buffer, 1, fileLength, file);
+
+	int n_lines = 1;
+	for (int i = 0; i < fileLength; i++) n_lines += (buffer[i] == '\n');
+
+	return n_lines;
+}
