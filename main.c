@@ -128,14 +128,14 @@ int deleteModpack(char* name) {
 int main(int argc, char* argv[])
 {
 	// PRE INITIALISATION (some important constants)
-	char* filename = argv[0];
+	char* exeName = argv[0];
 
 	char username[MAX_USERNAME_LENGTH];
 	unsigned long usernameLength;
 	int n_attempts = 0;
 
 	// damn GetUserName can return an empty username ("\0") and set usernameLength
-	// to twice (assumption, i was getting 12 instead of 6) as real username length considering '\0'
+	// to twice (assumption, i was getting 12 instead of 6) as real username length (with '\0')
 	do { 
 		GetUserName(username, &usernameLength); 
 		n_attempts++;
@@ -160,11 +160,13 @@ int main(int argc, char* argv[])
 	puts(""); // new line because why not
 
 	// COMMAND HANDLING
-	if (argc == 2) {
+	if (argc == 1) {
+		printf("MineCraft ModPack Manager\nType '%s help' for help.", exeName);
+	} else if (argc == 2) {
 		char* command = argv[1];
 
 		if (strcmp(command, "list") == 0) { listModpacks(); }
-		else if (strcmp(command, "help") == 0) { printHelpText(filename); }
+		else if (strcmp(command, "help") == 0) { printHelpText(exeName); }
 
 	} else if (argc == 3) {
 		char* command = argv[1];
@@ -172,13 +174,13 @@ int main(int argc, char* argv[])
 
 		if (strcmp(command, "create") == 0) {
 			int status = createModpack(arg);
-			if (status == ERR_OPERATION_FAIL) { printf("%sFatal error: couldn't create %s.mp%s", C_LRED, arg, C_RESET); }
+			if (status == ERR_OPERATION_FAIL) { printf("%sFatal error: couldn't create '%s.mp'.%s", C_LRED, arg, C_RESET); }
 			else if (status == ERR_ALREADY_EXISTS) { printf("%sFatal error: '%s' already exists!%s", C_LRED, arg, C_RESET); }
 			else if (status == SUCCESS) { printf("Successfully created '%s'.", arg); }
 
 		} else if (strcmp(command, "delete") == 0) {
 			int status = deleteModpack(arg);
-			if (status == ERR_OPERATION_FAIL) { printf("%sFatal error: couldn't delete '%s'%s", C_LRED, arg, C_RESET); }
+			if (status == ERR_OPERATION_FAIL) { printf("%sFatal error: couldn't delete '%s'.%s", C_LRED, arg, C_RESET); }
 			else if (status == ERR_NOT_FOUND) { printf("%sFatal error: '%s' doesn't exist!%s", C_LRED, arg, C_RESET); }
 			else if (status == SUCCESS) { printf("Successfully deleted '%s'.", arg); }
 		}
