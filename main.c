@@ -20,6 +20,7 @@
 #define ERR_OPERATION_FAIL -1
 #define ERR_ALREADY_EXISTS -2
 #define ERR_NOT_FOUND -3
+#define ERR_TMPFILE_FAIL -4
 
 
 char MINECRAFT_DIRECTORY[MAX_PATH_LENGTH];
@@ -81,7 +82,7 @@ void listModpacks() {
 		char modpackName[strlen(modpacks[i])];
 		strcpy(modpackName, modpacks[i]);
 		modpackName[strlen(modpackName) - 3] = '\0'; // trim the .mp extension
-		printf("    %s\n", modpackName);
+		printf("  - %s\n", modpackName);
 	}
 	freeStrArray(modpacks, n_modpacks); // freeing memory because it's good to free memory
 }
@@ -101,6 +102,36 @@ int createModpack(char* name) {
 
 	file = fopen(path, "w");
 	if (file == NULL) { return ERR_OPERATION_FAIL; } // couldn't create file
+
+	return SUCCESS;
+}
+
+int listModpackMods(char* name) {
+	char path[MAX_PATH_LENGTH];
+	snprintf(path, MAX_PATH_LENGTH, "%s%s.mp", MODPACKS_DIRECTORY, name);
+	// the path should look like:
+	// C:\Users\<user>\AppData\Roaming\.minecraft\mods\mcmpm-modpacks\<modpack name>.mp
+
+	FILE* file;
+
+	file = fopenNoCR(path, "r");
+
+	// if either modpack doesn't exist or failed to create tmpfile
+	if (file == NULL) {
+		file = fopen(path, "r");
+		if (file == NULL) return ERR_NOT_FOUND; // modpack doesn't exist
+
+		// if the modpack exists, then tmpfile() failed
+		fclose(file);
+		return ERR_TMPFILE_FAIL;
+	}
+
+	int n_lines = getNLines(file);
+	char* lines[n_lines];
+	freadLines(lines, n_lines, file);
+
+	printf("Mods in %s:\n", name);
+	for (int i = 0; i < n_lines; i++) printf("  - %s\n", lines[i]);
 
 	return SUCCESS;
 }
@@ -183,6 +214,10 @@ int main(int argc, char* argv[])
 			if (status == ERR_OPERATION_FAIL) { printf("%sFatal error: couldn't delete '%s'.%s", C_LRED, arg, C_RESET); }
 			else if (status == ERR_NOT_FOUND) { printf("%sFatal error: '%s' doesn't exist!%s", C_LRED, arg, C_RESET); }
 			else if (status == SUCCESS) { printf("Successfully deleted '%s'.", arg); }
+		} else if (strcmp(command, "list") == 0) {
+			int status = listModpackMods(arg);
+			if (status == ERR_TMPFILE_FAIL) { printf("%sFatal error: failed to create temporary file!%s", C_LRED, C_RESET); }
+			else if (status == ERR_NOT_FOUND) { printf("%sFatal error: '%s' doesn't exist!%s", C_LRED, arg, C_RESET); }
 		}
 
 		// more command handlers here
