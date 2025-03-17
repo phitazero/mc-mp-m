@@ -179,6 +179,7 @@ int main(int argc, char* argv[])
 	int status = init(username);
 	if (status == ERR_OPERATION_FAIL) {
 		printf("%sFatal error: Couldn't create vanilla.mp (default modpack).%s", C_LRED, C_RESET);
+		return 0;
 	} else if (status == ERR_NOT_FOUND) {	
 		printf("%sFatal error: No .minecraft folder found.%s\n", C_LRED, C_RESET);
 		return 0;
@@ -198,6 +199,7 @@ int main(int argc, char* argv[])
 
 		if (strcmp(command, "list") == 0) { listModpacks(); }
 		else if (strcmp(command, "help") == 0) { printHelpText(exeName); }
+		else { printf("%sUnknown command: '%s'. Type '%s help' for help. %s", C_LRED, command, exeName, C_RESET); }
 
 	} else if (argc == 3) {
 		char* command = argv[1];
@@ -216,9 +218,9 @@ int main(int argc, char* argv[])
 			else if (status == SUCCESS) { printf("Successfully deleted '%s'.", arg); }
 		} else if (strcmp(command, "list") == 0) {
 			int status = listModpackMods(arg);
-			if (status == ERR_TMPFILE_FAIL) { printf("%sFatal error: failed to create temporary file!%s", C_LRED, C_RESET); }
+			if (status == ERR_TMPFILE_FAIL) { printf("%sFatal error: failed to create temporary file! Try again.%s", C_LRED, C_RESET); }
 			else if (status == ERR_NOT_FOUND) { printf("%sFatal error: '%s' doesn't exist!%s", C_LRED, arg, C_RESET); }
-		}
+		} else { printf("%sUnknown command: '%s'. Type '%s help' for help. %s", C_LRED, command, exeName, C_RESET); }
 
 		// more command handlers here
 	}
