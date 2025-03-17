@@ -65,8 +65,12 @@ int init(char* username) {
 	return SUCCESS_ALT;
 }
 
-void printHelpText(char* filename) {
-	printf("here comes the help text, btw the filename is %s", filename); // TEMPORARY
+void printHelpText(char* exeName) {
+	printf("%s help - get help\n", exeName);
+	printf("%s list - show all existing modpacks\n", exeName);
+	printf("%s create <modpack> - create a modpack with name <modpack>\n", exeName);
+	printf("%s delete <modpack> - delete the modpack with name <modpack>\n", exeName);
+	printf("%s list <modpack> - print all mods in <modpack>\n", exeName);
 }
 
 void freeStrArray(char** array, int n_items) {
@@ -212,10 +216,16 @@ int main(int argc, char* argv[])
 			else if (status == SUCCESS) { printf("Successfully created '%s'.", arg); }
 
 		} else if (strcmp(command, "delete") == 0) {
-			int status = deleteModpack(arg);
-			if (status == ERR_OPERATION_FAIL) { printf("%sFatal error: couldn't delete '%s'.%s", C_LRED, arg, C_RESET); }
-			else if (status == ERR_NOT_FOUND) { printf("%sFatal error: '%s' doesn't exist!%s", C_LRED, arg, C_RESET); }
-			else if (status == SUCCESS) { printf("Successfully deleted '%s'.", arg); }
+			printf("%sAre you sure you want to delete '%s'? (y/n): ", C_LRED, arg);
+			char choice = getch();
+			printf("%c%s\n", choice, C_RESET);
+
+			if (choice == 'y' || choice == 'Y') {
+				int status = deleteModpack(arg);
+				if (status == ERR_OPERATION_FAIL) { printf("%sFatal error: couldn't delete '%s'.%s", C_LRED, arg, C_RESET); }
+				else if (status == ERR_NOT_FOUND) { printf("%sFatal error: '%s' doesn't exist!%s", C_LRED, arg, C_RESET); }
+				else if (status == SUCCESS) { printf("Successfully deleted '%s'.", arg); }
+			}
 		} else if (strcmp(command, "list") == 0) {
 			int status = listModpackMods(arg);
 			if (status == ERR_TMPFILE_FAIL) { printf("%sFatal error: failed to create temporary file! Try again.%s", C_LRED, C_RESET); }
