@@ -164,17 +164,17 @@ int main(int argc, char* argv[])
 		GetUserName(username, &usernameLength);
 		n_attempts++;
 		if (n_attempts > MAX_GETUSERNAME_ATTEMPTS) {
-			printf("%sFatal error: Damn GetUserName() refuses to work normally, can't do anything about it.%s", C_LRED, C_RESET);
+			printf(C_LRED"Fatal error: Damn GetUserName() refuses to work normally, can't do anything about it."C_RESET);
 		}
 	} while (usernameLength != strlen(username) + 1);
 
 	// INITIALISATION
 	int status = init(username);
 	if (status == ERR_OPERATION_FAIL) {
-		printf("%sFatal error: Couldn't create vanilla.mp (default modpack).%s", C_LRED, C_RESET);
+		printf(C_LRED"Fatal error: Couldn't create vanilla.mp (default modpack).\n"C_RESET);
 		return 0;
 	} else if (status == ERR_NOT_FOUND) {	
-		printf("%sFatal error: No .minecraft folder found.%s\n", C_LRED, C_RESET);
+		printf(C_LRED"Fatal error: No .minecraft folder found.\n"C_RESET);
 		return 0;
 	} else if (status == SUCCESS) {
 		printf("Found an existing configuration.\n");
@@ -192,7 +192,7 @@ int main(int argc, char* argv[])
 
 		if (strcmp(command, "list") == 0) { listModpacks(); }
 		else if (strcmp(command, "help") == 0) { printHelpText(exeName); }
-		else { printf("%sUnknown command: '%s'. Type '%s help' for help. %s", C_LRED, command, exeName, C_RESET); }
+		else { printf(C_LRED"Unknown command: '%s'. Type '%s help' for help."C_RESET, command, exeName); }
 
 	} else if (argc == 3) {
 		char* command = argv[1];
@@ -200,26 +200,26 @@ int main(int argc, char* argv[])
 
 		if (strcmp(command, "create") == 0) {
 			int status = createModpack(arg);
-			if (status == ERR_OPERATION_FAIL) { printf("%sFatal error: couldn't create '%s.mp'.%s", C_LRED, arg, C_RESET); }
-			else if (status == ERR_ALREADY_EXISTS) { printf("%sFatal error: '%s' already exists!%s", C_LRED, arg, C_RESET); }
+			if (status == ERR_OPERATION_FAIL) { printf(C_LRED"Fatal error: couldn't create '%s.mp'."C_RESET, arg); }
+			else if (status == ERR_ALREADY_EXISTS) { printf(C_LRED"Fatal error: '%s' already exists!"C_RESET, arg); }
 			else if (status == SUCCESS) { printf("Successfully created '%s'.", arg); }
 
 		} else if (strcmp(command, "delete") == 0) {
-			printf("%sAre you sure you want to delete '%s'? (y/n): ", C_LRED, arg);
+			printf(C_LRED"Are you sure you want to delete '%s'? (y/n): ", arg);
 			char choice = getch();
-			printf("%c%s\n", choice, C_RESET);
+			printf("%c\n"C_RESET, choice);
 
 			if (choice == 'y' || choice == 'Y') {
 				int status = deleteModpack(arg);
-				if (status == ERR_OPERATION_FAIL) { printf("%sFatal error: couldn't delete '%s'.%s", C_LRED, arg, C_RESET); }
-				else if (status == ERR_NOT_FOUND) { printf("%sFatal error: '%s' doesn't exist!%s", C_LRED, arg, C_RESET); }
+				if (status == ERR_OPERATION_FAIL) { printf(C_LRED"Fatal error: couldn't delete '%s'."C_RESET, arg); }
+				else if (status == ERR_NOT_FOUND) { printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg); }
 				else if (status == SUCCESS) { printf("Successfully deleted '%s'.", arg); }
 			}
 		} else if (strcmp(command, "list") == 0) {
 			int status = listModpackMods(arg);
-			if (status == ERR_TMPFILE_FAIL) { printf("%sFatal error: failed to create temporary file! Try again.%s", C_LRED, C_RESET); }
-			else if (status == ERR_NOT_FOUND) { printf("%sFatal error: '%s' doesn't exist!%s", C_LRED, arg, C_RESET); }
-		} else { printf("%sUnknown command: '%s'. Type '%s help' for help. %s", C_LRED, command, exeName, C_RESET); }
+			if (status == ERR_TMPFILE_FAIL) { printf(C_LRED"Fatal error: failed to create temporary file! Try again."C_RESET); }
+			else if (status == ERR_NOT_FOUND) { printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg); }
+		} else { printf(C_LRED"Unknown command: '%s'. Type '%s help' for help. "C_RESET, command, exeName); }
 
 		// more command handlers here
 	}
