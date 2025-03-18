@@ -127,8 +127,10 @@ int listModpackMods(char* name) {
 	char* lines[n_lines];
 	freadLines(lines, n_lines, file);
 
-	printf("Mods in %s:\n", name);
-	for (int i = 0; i < n_lines; i++) printf("  - %s\n", lines[i]);
+	if (n_lines > 1 || lines[0][0] != '\0') {
+		printf("Mods in %s:\n", name);
+		for (int i = 0; i < n_lines; i++) printf("  - %s\n", lines[i]);
+	} else { printf("'%s' is empty.", name); }
 
 	return SUCCESS;
 }
