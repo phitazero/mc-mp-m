@@ -21,6 +21,8 @@
 #define ERR_ALREADY_EXISTS -2
 #define ERR_NOT_FOUND -3
 #define ERR_TMPFILE_FAIL -4
+#define ERR_NO_FILES -5
+#define ERR_ABORTED -6
 
 
 char MINECRAFT_DIRECTORY[MAX_PATH_LENGTH];
@@ -79,7 +81,7 @@ void freeStrArray(char** array, int n_items) {
 void listModpacks() {
 	int n_modpacks = getNFiles(MODPACKS_DIRECTORY, "mp");
 	char* modpacks[n_modpacks];
-	findFiles(MODPACKS_DIRECTORY, "mp", n_modpacks, modpacks);
+	findFiles(modpacks, "mp", n_modpacks, MODPACKS_DIRECTORY);
 	printf("Modpacks:\n");
 	for (int i = 0; i < n_modpacks; i++) {
 		char name[strlen(modpacks[i])];
@@ -150,6 +152,51 @@ int deleteModpack(char* name) {
 	return SUCCESS;
 }
 
+int addMods(char* name, char* directory) {
+	// check if modpack exists
+	char path[MAX_PATH_LENGTH];
+	putModpackPath(path, name);
+	if (!isfile(path)) return ERR_NOT_FOUND;
+
+	int n_jars = getNFiles(directory, "jar");
+	if (n_jars == 0) return ERR_NO_FILES;
+
+	// options are all available .jars and "Finish" option
+	int n_options = n_jars + 1;
+	char* options[n_options];
+
+	// adding the "Finish" option to the first position
+	char finishOption[] = "Finish";
+	options[0] = finishOption;
+
+	// 0th index in options is reserved for "Finish", so start writing from the 1st index
+	findFiles(options + 1, "jar", n_jars, directory);
+
+	// initialize the array of chosen option with none chosen by default
+	int selected[n_options];
+	memset(selected, 0, n_options*sizeof(int));
+
+	for (;;) {
+		int choice = multichoice(n_options, options, selected);
+
+		// break if selected "Finish"
+		if (choice == 0) break;
+		// or if pressed ESC
+		if (choice == -1) return ERR_ABORTED;
+
+		selected[choice] = !selected[choice]; // invert the current state
+	}
+
+	// count selected options
+	int n_selected = 0;
+	for (int i = 0; i < n_options; i++) { n_selected += selected[i]; };
+
+	/* further logic:
+		create an array of string with length n_selected
+		copy every selected file with for loop (with all checks) and free() every unselected string
+		free() every selected and copied strings
+	*/
+}
 
 int main(int argc, char* argv[])
 {
@@ -224,10 +271,20 @@ int main(int argc, char* argv[])
 		} else { printf(C_LRED"Unknown command: '%s'. Type '%s help' for help. "C_RESET, command, exeName); }
 
 		// more command handlers here
+	} else if (argc == 4) {
+		char* command = argv[1];
+		char* arg1 = argv[2];
+		char* arg2 = argv[3];
+
+		if (strcmp(command, "add") == 0) {
+			int status = addMods(arg1, arg2);
+			if (status == ERR_NO_FILES) { printf(C_LRED"No mods found in '%s'!"C_RESET, arg2); }
+			else if (status == ERR_NOT_FOUND) { printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg1); }
+
+		} else { printf(C_LRED"Unknown command: '%s'. Type '%s help' for help. "C_RESET, command, exeName); }
 	}
 
 	puts(""); // another new line because why not
 
-	// NOT FINISHED
 	return 0;
 }
