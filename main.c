@@ -26,6 +26,11 @@
 char MINECRAFT_DIRECTORY[MAX_PATH_LENGTH];
 char MODPACKS_DIRECTORY[MAX_PATH_LENGTH];
 
+// puts C:\Users\<user>\AppData\Roaming\.minecraft\mods\mcmpm-modpacks\<modpack name>.mp into out
+void putModpackPath(char* out, char* name) {
+	snprintf(out, MAX_PATH_LENGTH, "%s%s.mp", MODPACKS_DIRECTORY, name);
+}
+
 int init(char* username) {
 	// set the constants
 	// replace %s with <user> in path templates
@@ -38,18 +43,12 @@ int init(char* username) {
 	// the path should look like:
 	// C:\Users\<user>\AppData\Roaming\.minecraft\clientId.txt
 
-	file = fopen(path, "r");
-	if (file == NULL) return ERR_NOT_FOUND; // if clientId.txt doesn't exist then .minecraft folder does neither
-	fclose(file);
+	if (!isfile(path)) return ERR_NOT_FOUND; // if clientId.txt doesn't exist then .minecraft folder does neither
 
-	snprintf(path, MAX_PATH_LENGTH, "%svanilla.mp", MODPACKS_DIRECTORY);
-	// the path should look like:
-	// C:\Users\<user>\AppData\Roaming\.minecraft\mods\mcmpm-modpacks\vanilla.mp
+	putModpackPath(path, "vanilla");
 
-	file = fopen(path, "r");
-	if (file != NULL) return SUCCESS; // if vanilla.mp modpack exists then modpacks folder does either
-	fclose(file);
-	
+	if (isfile(path)) return SUCCESS; // if vanilla.mp modpack exists then modpacks folder does either
+
 	int maxCmdLength = MAX_PATH_LENGTH + 8;
 	char cmd[maxCmdLength];
 
@@ -83,19 +82,17 @@ void listModpacks() {
 	findFiles(MODPACKS_DIRECTORY, "mp", n_modpacks, modpacks);
 	printf("Modpacks:\n");
 	for (int i = 0; i < n_modpacks; i++) {
-		char modpackName[strlen(modpacks[i])];
-		strcpy(modpackName, modpacks[i]);
-		modpackName[strlen(modpackName) - 3] = '\0'; // trim the .mp extension
-		printf("  - %s\n", modpackName);
+		char name[strlen(modpacks[i])];
+		strcpy(name, modpacks[i]);
+		name[strlen(name) - 3] = '\0'; // trim the .mp extension
+		printf("  - %s\n", name);
 	}
 	freeStrArray(modpacks, n_modpacks); // freeing memory because it's good to free memory
 }
 
 int createModpack(char* name) {
 	char path[MAX_PATH_LENGTH];
-	snprintf(path, MAX_PATH_LENGTH, "%s%s.mp", MODPACKS_DIRECTORY, name);
-	// the path should look like:
-	// C:\Users\<user>\AppData\Roaming\.minecraft\mods\mcmpm-modpacks\<modpack name>.mp
+	putModpackPath(path, name);
 
 	FILE* file;
 
@@ -112,9 +109,7 @@ int createModpack(char* name) {
 
 int listModpackMods(char* name) {
 	char path[MAX_PATH_LENGTH];
-	snprintf(path, MAX_PATH_LENGTH, "%s%s.mp", MODPACKS_DIRECTORY, name);
-	// the path should look like:
-	// C:\Users\<user>\AppData\Roaming\.minecraft\mods\mcmpm-modpacks\<modpack name>.mp
+	putModpackPath(path, name);
 
 	FILE* file;
 
@@ -122,11 +117,9 @@ int listModpackMods(char* name) {
 
 	// if either modpack doesn't exist or failed to create tmpfile
 	if (file == NULL) {
-		file = fopen(path, "r");
-		if (file == NULL) return ERR_NOT_FOUND; // modpack doesn't exist
+		if (!isfile(path)) return ERR_NOT_FOUND; // modpack doesn't exist
 
 		// if the modpack exists, then tmpfile() failed
-		fclose(file);
 		return ERR_TMPFILE_FAIL;
 	}
 
@@ -142,19 +135,15 @@ int listModpackMods(char* name) {
 
 int deleteModpack(char* name) {
 	char path[MAX_PATH_LENGTH];
-	snprintf(path, MAX_PATH_LENGTH, "%s%s.mp", MODPACKS_DIRECTORY, name);
-	// the path should look like:
-	// C:\Users\<user>\AppData\Roaming\.minecraft\mods\mcmpm-modpacks\<modpack name>.mp
+	putModpackPath(path, name);
 
 	FILE* file;
 
 	// check if modpack exists
-	file = fopen(path, "r");
-	if (file == NULL) { return ERR_ALREADY_EXISTS; }
-	fclose(file);
+	if (!isfile(path)) return ERR_NOT_FOUND;
 
 	int status = remove(path);
-	if (status != 0) { return ERR_OPERATION_FAIL; } // if failed to remove
+	if (status != 0) return ERR_OPERATION_FAIL; // if failed to remove
 
 	return SUCCESS;
 }
@@ -172,7 +161,7 @@ int main(int argc, char* argv[])
 	// damn GetUserName can return an empty username ("\0") and set usernameLength
 	// to twice (assumption, i was getting 12 instead of 6) as real username length (with '\0')
 	do { 
-		GetUserName(username, &usernameLength); 
+		GetUserName(username, &usernameLength);
 		n_attempts++;
 		if (n_attempts > MAX_GETUSERNAME_ATTEMPTS) {
 			printf("%sFatal error: Damn GetUserName() refuses to work normally, can't do anything about it.%s", C_LRED, C_RESET);
