@@ -4,29 +4,31 @@
 #include <string.h>
 
 #define C_RESET "\e[0m"
-#define C_SELECTED "\e[30;47m"
+#define C_CURRENT "\e[30;47m"
+#define C_UNSELECTED "\e[0;90m"
 
 #define KEY_ENTER 13
 #define KEY_ESC 27
 
-// n_sth - number of sth, e.g. n_options - number of options 
-
-int multichoice(int n_options, char* options[], char* postText) {
+// selected[i] is a bool (formally and int) indicating whether options[i] was selected
+int multichoice(int n_options, char* options[], int* selected) {
 	if (n_options < 1) return -1;
 
-	int current = 0; // index of currently selected option
+	static int current = 0; // index of currently selected option
 	for (;;) {
 		system("cls");
 
 		for (int i = 0; i < n_options; i++) {
-			char color[9];
-			if (i == current) strcpy(color, C_SELECTED);
-			else strcpy(color, C_RESET);
-			printf("[%d] %s%s\n", i, color, options[i]);
-			printf(C_RESET);
-		}
+			char indexColor[9]; // the color applied to the index label
+			if (i == current) strcpy(indexColor, C_CURRENT);
+			else strcpy(indexColor, C_RESET);
 
-		if (postText) printf("\n%s\n", postText);
+			char textColor[8]; // the color applies to the text of the option
+			if (selected[i]) { strcpy(textColor, C_RESET); }
+			else { strcpy(textColor, C_UNSELECTED); }
+
+			printf("%s[%d] %s%s\n"C_RESET, indexColor, i, textColor, options[i]);
+		}
 
 		unsigned char input = getch();
 		if (input == KEY_ENTER) return current;
