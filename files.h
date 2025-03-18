@@ -39,7 +39,7 @@ int getNFiles(char* directory, char ext[]) {
 }
 
 // puts the pointer to the array of pointers to malloc()'ed filenames of .<ext> files into out_files
-int findFiles(char* directory, char ext[], int n_files, char** out_files) {
+int findFiles(char** out_files, char ext[], int n_files, char* directory) {
 	WIN32_FIND_DATA findFileData;
 
 	char path[MAX_PATH_LENGTH];
