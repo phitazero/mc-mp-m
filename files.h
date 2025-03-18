@@ -1,4 +1,4 @@
-// to work with files (specifically .jar's)
+// to work with files
 
 #include <windows.h>
 #include <string.h>
@@ -8,11 +8,17 @@
 // bring everything to camelCase
 #define copyFile CopyFile
 
-/*
-TODO:
-implement getNLines
-impleemnt readLines
-*/
+int isfile(char* path) {
+	FILE* file;
+	file = fopen(path, "r");
+
+	// couldn't open file - probably doesn't exist
+	if (file == NULL) return 0;
+
+	// if we got to this point - file exists
+	fclose(file);
+	return 1;
+}
 
 // get number of .<ext> files in a directory
 int getNFiles(char* directory, char ext[]) {
@@ -43,9 +49,10 @@ int findFiles(char* directory, char ext[], int n_files, char** out_files) {
 	if (handleFind == INVALID_HANDLE_VALUE) return -1;
 
 	for (int i = 0; i < n_files; i++) {
-		char* filename = (char*)malloc(strlen(findFileData.cFileName) + 1);
+		char* filename = (char*) malloc(strlen(findFileData.cFileName) + 1);
 		strcpy(filename, findFileData.cFileName);
 		out_files[i] = filename;
+
 		FindNextFile(handleFind, &findFileData);
 	}
 	
@@ -113,8 +120,6 @@ int freadLines(char** out, int n_lines, FILE* file) {
 		for (lineLength = 0; !(p[lineLength] == '\n' || (int)(p - buffer) + lineLength == fileLength); lineLength++);
 		lineLength++; // the for loop doesn't consider the '\n' (or EOF) at the end
 					// manually add a byte for '\0'
-
-
 
 		char* line = malloc(lineLength);
 		memcpy(line, p, lineLength);
