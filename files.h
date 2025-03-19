@@ -96,6 +96,7 @@ int getFileLength(FILE* file) {
 
 int getNLines(FILE* file) {
 	int fileLength = getFileLength(file);
+	if (fileLength == 0) return 0;
 
 	char buffer[fileLength];
 	fread(buffer, 1, fileLength, file);
@@ -107,7 +108,7 @@ int getNLines(FILE* file) {
 	return n_lines;
 }
 
-int freadLines(char** out, int n_lines, FILE* file) {
+void freadLines(char** out, int n_lines, FILE* file) {
 	int fileLength = getFileLength(file);
 
 	char buffer[fileLength];
@@ -128,5 +129,25 @@ int freadLines(char** out, int n_lines, FILE* file) {
 
 		p += lineLength; // move on to the next line
 	}
+}
 
+void fwriteLines(char** lines, int n_lines, FILE* file) {
+	for (int i = 0; i < n_lines; i++) {
+		char* line = lines[i];
+
+		// considering the '\0'
+		int lineLength = strlen(line) + 1;
+
+		if (lineLength > 1) { // if it's not an empty line
+			for (int j = 0; j < lineLength; j++) {
+				char c = line[j];
+				if (c != '\0') { fputc(c, file); } // if it's not '\0'
+				else {
+					// if it's not the last line
+					if (i != n_lines - 1) fputc('\n', file);
+					// leave the last line without '\n'
+				}
+			}
+		}
+	}
 }
