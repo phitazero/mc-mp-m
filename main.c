@@ -264,6 +264,18 @@ int addMods(char* name, char* directory) {
 	return SUCCESS;
 }
 
+void directoryFormat(char* directory) {
+	if (strcmp(directory, "index") == 0) { // 'index' means the mcmpm directory
+		strcpy(directory, MODPACKS_DIRECTORY);
+	} else {
+		int length = strlen(directory);
+		if (directory[length - 1] != '/') { // if doesn't end with / add it
+			directory[length] = '/';
+			directory[length + 1] = '\0';
+		}
+	}
+}
+
 int main(int argc, char* argv[])
 {
 	// PRE INITIALISATION (some important constants)
@@ -341,7 +353,12 @@ int main(int argc, char* argv[])
 		char* arg2 = argv[3];
 
 		if (strcmp(command, "add") == 0) {
-			int status = addMods(arg1, arg2);
+			char directory[MAX_PATH_LENGTH];
+			strcpy(directory, arg2);
+			directoryFormat(directory);
+
+			int status = addMods(arg1, directory);
+
 			if (status == ERR_NO_FILES) { printf(C_LRED"Fatal error: No mods found in '%s'!"C_RESET, arg2); }
 			else if (status == ERR_EDITED_VANILLA) { printf(C_LRED"Fatal error: you can't edit 'vanilla'!"C_RESET); }
 			else if (status == ERR_NOT_FOUND) { printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg1); }
