@@ -78,6 +78,8 @@ void printHelpText(char* exeName) {
 	printf("%s create <modpack> - create a modpack with name <modpack>\n", exeName);
 	printf("%s delete <modpack> - delete the modpack with name <modpack>\n", exeName);
 	printf("%s list <modpack> - print all mods in <modpack>\n", exeName);
+	printf("%s add <modpack> <directory> - add mods from <directory> to <modpack>. Mods in index can be accessed by using <direcory> 'index'.\n", exeName);
+	printf("%s edit <modpack> - remove chosen mods from <modpack>\n", exeName);
 }
 
 void freeStrArray(char** array, int n_items) {
