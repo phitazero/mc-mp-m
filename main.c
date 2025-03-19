@@ -144,10 +144,11 @@ int listModpackMods(char* name) {
 }
 
 int deleteModpack(char* name) {
+	// you can't delete 'vanilla' modpack
+	if (strcmp(name, "vanilla") == 0) return ERR_EDITED_VANILLA;
+
 	char path[MAX_PATH_LENGTH];
 	putModpackPath(path, name);
-
-	FILE* file;
 
 	// check if modpack exists
 	if (!isfile(path)) return ERR_NOT_FOUND;
@@ -339,6 +340,7 @@ int main(int argc, char* argv[])
 			if (choice == 'y' || choice == 'Y') {
 				int status = deleteModpack(arg);
 				if (status == ERR_OPERATION_FAIL) { printf(C_LRED"Fatal error: couldn't delete '%s'."C_RESET, arg); }
+				else if (status == ERR_EDITED_VANILLA) { printf(C_LRED"Fatal error: you can't delete 'vanilla'!"C_RESET); }
 				else if (status == ERR_NOT_FOUND) { printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg); }
 				else if (status == SUCCESS) { printf("Successfully deleted '%s'.", arg); }
 			}
