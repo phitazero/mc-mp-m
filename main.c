@@ -187,7 +187,7 @@ int addMods(char* name, char* directory) {
 	memset(selectedStatuses, 0, n_options*sizeof(int));
 
 	for (;;) {
-		int choice = multichoice(n_options, options, selectedStatuses);
+		int choice = multichoice(n_options, options, selectedStatuses, NULL);
 
 		// break if selectedStatuses "Finish"
 		if (choice == 0) break;
@@ -297,7 +297,7 @@ int editModpack(char* name) {
 	for (int i = 1; i < n_options; i++) { selectedStatuses[i] = 1; }
 
 	for (;;) {
-		int choice = multichoice(n_options, options, selectedStatuses);
+		int choice = multichoice(n_options, options, selectedStatuses, NULL);
 
 		// break if selectedStatuses "Finish"
 		if (choice == 0) break;
