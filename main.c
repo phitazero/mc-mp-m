@@ -265,6 +265,67 @@ int addMods(char* name, char* directory) {
 	return SUCCESS;
 }
 
+int editModpack(char* name) {
+	// you can't edit 'vanilla' modpack
+	if (strcmp(name, "vanilla") == 0) return ERR_EDITED_VANILLA;
+
+	char path[MAX_PATH_LENGTH];
+	putModpackPath(path, name);
+
+	// check if modpack exists
+	if (!isfile(path)) return ERR_NOT_FOUND;
+
+	FILE* file = fopenNoCR(path, "r");
+
+	int n_modpacks = getNLines(file);
+
+	// options are all modpacks + "Finish" option
+	int n_options = n_modpacks + 1;
+	char* options[n_options];
+
+	// adding the "Finish" option to the first position
+	char finishOption[] = "Finish";
+	options[0] = finishOption;
+
+	// 0th index in options is reserved for "Finish", so start writing from the 1st index
+	freadLines(options + 1, n_modpacks, file);
+	fclose(file);
+
+	// initialize the array of chosen options with every options (except "Finish") chosen by default
+	int selectedStatuses[n_options];
+	selectedStatuses[0] = 0;
+	for (int i = 1; i < n_options; i++) { selectedStatuses[i] = 1; }
+
+	for (;;) {
+		int choice = multichoice(n_options, options, selectedStatuses);
+
+		// break if selectedStatuses "Finish"
+		if (choice == 0) break;
+		// or if pressed ESC
+		if (choice == -1) return ERR_ABORTED;
+
+		selectedStatuses[choice] = !selectedStatuses[choice]; // invert the current state
+	}	
+
+	// set every unselected option to empty string, so they will be ignored by fwriteLines
+	// we can do it easily by setting first byte to \0
+	for (int i = 0; i < n_options; i++) {
+		if (!selectedStatuses[i]) { options[i][0] = '\0'; }
+	}
+
+	file = fopen(path, "w");
+	if (file == NULL) return ERR_OPERATION_FAIL;
+	fwriteLines(options, n_options, file);
+	fclose(file);
+
+	// start with 1 because we don't want to free "Finish"
+	for (int i = 1; i < n_options; i++) { free(options[i]); }
+
+	puts(""); // new line because why not
+
+	return SUCCESS;
+}
+
 void directoryFormat(char* directory) {
 	if (strcmp(directory, "index") == 0) { // 'index' means the mcmpm directory
 		strcpy(directory, MODPACKS_DIRECTORY);
@@ -348,6 +409,18 @@ int main(int argc, char* argv[])
 			int status = listModpackMods(arg);
 			if (status == ERR_TMPFILE_FAIL) { printf(C_LRED"Fatal error: failed to create temporary file! Try again."C_RESET); }
 			else if (status == ERR_NOT_FOUND) { printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg); }
+
+		} else if (strcmp(command, "edit") == 0) {
+			int status = editModpack(arg);			
+			if (status == ERR_EDITED_VANILLA) { printf(C_LRED"Fatal error: you can't edit 'vanilla'!"C_RESET); }
+			else if (status == ERR_NOT_FOUND) { printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg); }
+			else if (status == ERR_ABORTED) {
+				printf(C_LRED"Fatal error: operation aborted.\n");
+				printf("Don't press ESC in multichoice menus, only in case of a softlock."C_RESET);
+			} else if (status == ERR_OPERATION_FAIL) { printf(C_LRED"Fatal error: Couldn't write to modpack!"C_RESET); }
+			else if (status == SUCCESS) { printf("Successfully edited '%s'.", arg); }
+
+
 		} else { printf(C_LRED"Unknown command: '%s'. Type '%s help' for help. "C_RESET, command, exeName); }
 	} else if (argc == 4) {
 		char* command = argv[1];
@@ -365,7 +438,7 @@ int main(int argc, char* argv[])
 			else if (status == ERR_EDITED_VANILLA) { printf(C_LRED"Fatal error: you can't edit 'vanilla'!"C_RESET); }
 			else if (status == ERR_NOT_FOUND) { printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg1); }
 			else if (status == ERR_ABORTED) {
-				printf(C_LRED"Fatal error: operation aborted.");
+				printf(C_LRED"Fatal error: operation aborted.\n");
 				printf("Don't press ESC in multichoice menus, only in case of a softlock."C_RESET);
 			} else if (status == ERR_OPERATION_FAIL) { printf(C_LRED"Fatal error: Couldn't copy files or write to modpack!"C_RESET); }
 			else if (status == SUCCESS) { printf("Successfully added mods to '%s'.", arg1); }
