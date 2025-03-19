@@ -23,12 +23,18 @@
 #define ERR_TMPFILE_FAIL -4
 #define ERR_NO_FILES -5
 #define ERR_ABORTED -6
+#define ERR_EDITED_VANILLA -7
 
 
 char MINECRAFT_DIRECTORY[MAX_PATH_LENGTH];
 char MODPACKS_DIRECTORY[MAX_PATH_LENGTH];
 
-// puts C:\Users\<user>\AppData\Roaming\.minecraft\mods\mcmpm-modpacks\<modpack name>.mp into out
+// puts C:\Users\<user>\AppData\Roaming\.minecraft\mods\mcmpm-modpacks\<modpack name> in out
+void putModIndexPath(char* out, char* name) {
+	snprintf(out, MAX_PATH_LENGTH, "%s%s", MODPACKS_DIRECTORY, name);
+}
+// puts C:\Users\<user>\AppData\Roaming\.minecraft\mods\mcmpm-modpacks\<modpack name>.mp in out
+// no i won't change every putModpackPath to putModIndexPath with adding .mp
 void putModpackPath(char* out, char* name) {
 	snprintf(out, MAX_PATH_LENGTH, "%s%s.mp", MODPACKS_DIRECTORY, name);
 }
@@ -153,6 +159,9 @@ int deleteModpack(char* name) {
 }
 
 int addMods(char* name, char* directory) {
+	// you can't edit 'vanilla' modpack
+	if (strcmp(name, "vanilla") == 0) return ERR_EDITED_VANILLA;
+
 	// check if modpack exists
 	char path[MAX_PATH_LENGTH];
 	putModpackPath(path, name);
@@ -161,7 +170,7 @@ int addMods(char* name, char* directory) {
 	int n_jars = getNFiles(directory, "jar");
 	if (n_jars == 0) return ERR_NO_FILES;
 
-	// options are all available .jars and "Finish" option
+	// options are all available .jars + "Finish" option
 	int n_options = n_jars + 1;
 	char* options[n_options];
 
@@ -173,29 +182,86 @@ int addMods(char* name, char* directory) {
 	findFiles(options + 1, "jar", n_jars, directory);
 
 	// initialize the array of chosen option with none chosen by default
-	int selected[n_options];
-	memset(selected, 0, n_options*sizeof(int));
+	int selectedStatuses[n_options];
+	memset(selectedStatuses, 0, n_options*sizeof(int));
 
 	for (;;) {
-		int choice = multichoice(n_options, options, selected);
+		int choice = multichoice(n_options, options, selectedStatuses);
 
-		// break if selected "Finish"
+		// break if selectedStatuses "Finish"
 		if (choice == 0) break;
 		// or if pressed ESC
 		if (choice == -1) return ERR_ABORTED;
 
-		selected[choice] = !selected[choice]; // invert the current state
+		selectedStatuses[choice] = !selectedStatuses[choice]; // invert the current state
 	}
 
-	// count selected options
+	// count selectedStatuses options
 	int n_selected = 0;
-	for (int i = 0; i < n_options; i++) { n_selected += selected[i]; };
+	for (int i = 0; i < n_options; i++) { n_selected += selectedStatuses[i]; };
 
-	/* further logic:
-		create an array of string with length n_selected
-		copy every selected file with for loop (with all checks) and free() every unselected string
-		free() every selected and copied strings
-	*/
+	// array of selected options
+	char* selected[n_selected];
+	
+	// add all selected options to selected[] and free() every unselected 
+	int j = 0;
+	for (int i = 0; i < n_options; i++) {
+		if (selectedStatuses[i]) {
+			selected[j] = options[i];
+			j++;
+		} else {
+			// we don't want to free "Finish" allocated in stack
+			if (i != 0) { free(options[i]); }
+		}
+	}
+
+	// copy selected files to mcmpm directory
+	for (int i = 0; i < n_selected; i++) {
+		char srcPath[MAX_PATH_LENGTH];
+		char dstPath[MAX_PATH_LENGTH];
+
+		char* filename = selected[i];
+
+		// set srcPath and dstPath
+		snprintf(srcPath, MAX_PATH_LENGTH, "%s%s", directory, filename);
+		putModIndexPath(dstPath, filename);
+
+		int status = copyFile(srcPath, dstPath, 0);
+		if (status == 0) return ERR_OPERATION_FAIL;
+	}
+
+	// in variable path we have path to corresponding .mp
+	FILE* file = fopenNoCR(path, "r");
+	if (file == NULL) return ERR_OPERATION_FAIL;
+	
+	int n_lines = getNLines(file);
+
+	if (n_lines == 0) { // if is empty
+		fclose(file);
+		file = fopen(path, "w");
+		if (file == NULL) return ERR_OPERATION_FAIL;
+
+		// write only the selected and don't carea about former contents (empty)
+		fwriteLines(selected, n_selected, file);
+		fclose(file);
+	} else {
+		char* lines[n_lines + n_selected];
+		// copy already existing entries 
+		freadLines(lines, n_lines, file);
+		// add the new ones after the old ones
+		memcpy(lines + n_lines, selected, n_selected*sizeof(char*));
+
+		fclose(file);
+		file = fopen(path, "w");
+		if (file == NULL) return ERR_OPERATION_FAIL;
+
+		fwriteLines(lines, n_lines + n_selected, file);
+		fclose(file);
+	}
+	
+	puts(""); // new line because i want it to be here
+
+	return SUCCESS;
 }
 
 int main(int argc, char* argv[])
@@ -269,8 +335,6 @@ int main(int argc, char* argv[])
 			if (status == ERR_TMPFILE_FAIL) { printf(C_LRED"Fatal error: failed to create temporary file! Try again."C_RESET); }
 			else if (status == ERR_NOT_FOUND) { printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg); }
 		} else { printf(C_LRED"Unknown command: '%s'. Type '%s help' for help. "C_RESET, command, exeName); }
-
-		// more command handlers here
 	} else if (argc == 4) {
 		char* command = argv[1];
 		char* arg1 = argv[2];
@@ -278,8 +342,14 @@ int main(int argc, char* argv[])
 
 		if (strcmp(command, "add") == 0) {
 			int status = addMods(arg1, arg2);
-			if (status == ERR_NO_FILES) { printf(C_LRED"No mods found in '%s'!"C_RESET, arg2); }
+			if (status == ERR_NO_FILES) { printf(C_LRED"Fatal error: No mods found in '%s'!"C_RESET, arg2); }
+			else if (status == ERR_EDITED_VANILLA) { printf(C_LRED"Fatal error: you can't edit 'vanilla'!"C_RESET); }
 			else if (status == ERR_NOT_FOUND) { printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg1); }
+			else if (status == ERR_ABORTED) {
+				printf(C_LRED"Fatal error: operation aborted.");
+				printf("Don't press ESC in multichoice menus, only in case of a softlock."C_RESET);
+			} else if (status == ERR_OPERATION_FAIL) { printf(C_LRED"Fatal error: Couldn't copy files or write to modpack!"C_RESET); }
+			else if (status == SUCCESS) { printf("Successfully added mods to '%s'.", arg1); }
 
 		} else { printf(C_LRED"Unknown command: '%s'. Type '%s help' for help. "C_RESET, command, exeName); }
 	}
