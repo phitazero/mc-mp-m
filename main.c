@@ -78,14 +78,17 @@ void printHelpText(char* exeName) {
 	printf("%s create <modpack> - create a modpack with name <modpack>\n", exeName);
 	printf("%s delete <modpack> - delete the modpack with name <modpack>\n", exeName);
 	printf("%s list <modpack> - print all mods in <modpack>\n", exeName);
-	printf("%s add <modpack> <directory> - add mods from <directory> to <modpack>. Mods in index can be accessed by using <direcory> 'index'.\n", exeName);
+	printf("%s add <modpack> <directory> - add mods from <directory> to <modpack>.\n", exeName);
+	printf("(Mods in index can be accessed by using <direcory> 'index'\n");
+	printf("and currently active mods are accessed using 'mods')\n");
 	printf("%s edit <modpack> - remove chosen mods from <modpack>\n", exeName);
 	printf("%s path - print the path to configuration folder.\n", exeName);
+	printf("%s current - show currently active mods.\n", exeName);
 }
 
 void freeStrArray(char** array, int n_items) {
 	for (int i = 0; i < n_items; i++) {free(array[i]);}
-} 
+}
 
 void listModpacks() {
 	int n_modpacks = getNFiles(MODPACKS_DIRECTORY, "mp");
@@ -140,7 +143,7 @@ int listModpackMods(char* name) {
 
 	if (n_lines > 1) {
 		printf("Mods in %s:\n", name);
-		for (int i = 0; i < n_lines; i++) printf("  - %s\n", lines[i]);
+		for (int i = 0; i < n_lines; i++) printf(" - %s\n", lines[i]);
 	} else { printf("'%s' is empty.", name); }
 
 	return SUCCESS;
@@ -207,7 +210,7 @@ int addMods(char* name, char* directory) {
 	// array of selected options
 	char* selected[n_selected];
 	
-	// add all selected options to selected[] and free() every unselected 
+	// add all selected options to selected[] and free() every unselected
 	int j = 0;
 	for (int i = 0; i < n_options; i++) {
 		if (selectedStatuses[i]) {
@@ -253,7 +256,7 @@ int addMods(char* name, char* directory) {
 		fclose(file);
 	} else {
 		char* lines[n_lines + n_selected];
-		// copy already existing entries 
+		// copy already existing entries
 		freadLines(lines, n_lines, file);
 		// add the new ones after the old ones
 		memcpy(lines + n_lines, selected, n_selected*sizeof(char*));
@@ -352,6 +355,25 @@ void directoryFormat(char* directory) {
 	}
 }
 
+void listCurrentMods() {
+	// get the directory of minecraft mods folder
+	char directory[MAX_PATH_LENGTH];
+	snprintf(directory, MAX_PATH_LENGTH, "%smods/", MINECRAFT_DIRECTORY);
+
+	int n_mods = getNFiles(directory, "jar");
+
+	if (n_mods == 0) {
+		printf("No mods found.\n");
+		return;
+	}
+
+	char* mods[n_mods];
+	findFiles(mods, "jar", n_mods, directory);
+
+	puts("Currently active mods:");
+	for (int i = 0; i < n_mods; i++) { printf("   - %s\n", mods[i]); }
+}
+
 int main(int argc, char* argv[])
 {
 	// PRE INITIALISATION (some important constants)
@@ -363,7 +385,7 @@ int main(int argc, char* argv[])
 
 	// damn GetUserName can return an empty username ("\0") and set usernameLength
 	// to twice (assumption, i was getting 12 instead of 6) as real username length (with '\0')
-	do { 
+	do {
 		GetUserName(username, &usernameLength);
 		n_attempts++;
 		if (n_attempts > MAX_GETUSERNAME_ATTEMPTS) {
@@ -399,6 +421,8 @@ int main(int argc, char* argv[])
 			printHelpText(exeName);
 		} else if (strcmp(command, "path") == 0) {
 			puts(MODPACKS_DIRECTORY);
+		} else if (strcmp(command, "current") == 0) {
+			listCurrentMods();
 		} else {
 			printf(C_LRED"Unknown command or syntax: '%s'. Type '%s help' for help."C_RESET, command, exeName);
 		}
