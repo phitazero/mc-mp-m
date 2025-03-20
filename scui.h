@@ -10,8 +10,8 @@
 #define KEY_ENTER 13
 #define KEY_ESC 27
 
-// selected[i] is a bool (formally an int) indicating whether options[i] was selected
-int multichoice(int n_options, char* options[], int* selected, char* postText) {
+// selected[i] is a bool (formally and int) indicating whether options[i] was selected
+int multichoice(int n_options, char* options[], int* selected) {
 	if (n_options < 1) return -1;
 
 	static int current = 0; // index of currently selected option
@@ -29,8 +29,6 @@ int multichoice(int n_options, char* options[], int* selected, char* postText) {
 
 			printf("%s[%d] %s%s\n"C_RESET, indexColor, i, textColor, options[i]);
 		}
-
-		if (postText) { printf("\n%s\n", postText);	 }
 
 		unsigned char input = getch();
 		if (input == KEY_ENTER) return current;
