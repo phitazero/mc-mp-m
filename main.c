@@ -339,8 +339,10 @@ int editModpack(char* name) {
 }
 
 void directoryFormat(char* directory) {
-	if (strcmp(directory, "index") == 0) { // 'index' means the mcmpm directory
+	if (strcmp(directory, "index") == 0) { // "index" means the mcmpm directory
 		strcpy(directory, MODPACKS_DIRECTORY);
+	} else if (strcmp(directory, "mods") == 0) { // "mods" is the default minecraft mods folder
+		snprintf(directory, MAX_PATH_LENGTH, "%smods/", MINECRAFT_DIRECTORY);
 	} else {
 		int length = strlen(directory);
 		if (directory[length - 1] != '/') { // if doesn't end with / add it
@@ -443,7 +445,7 @@ int main(int argc, char* argv[])
 			}
 
 		} else if (strcmp(command, "edit") == 0) {
-			int status = editModpack(arg);			
+			int status = editModpack(arg);
 			if (status == ERR_EDITED_VANILLA) {
 				printf(C_LRED"Fatal error: you can't edit 'vanilla'!"C_RESET);
 			} else if (status == ERR_NOT_FOUND) {
