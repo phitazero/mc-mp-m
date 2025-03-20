@@ -80,6 +80,7 @@ void printHelpText(char* exeName) {
 	printf("%s list <modpack> - print all mods in <modpack>\n", exeName);
 	printf("%s add <modpack> <directory> - add mods from <directory> to <modpack>. Mods in index can be accessed by using <direcory> 'index'.\n", exeName);
 	printf("%s edit <modpack> - remove chosen mods from <modpack>\n", exeName);
+	printf("%s path - print the path to configuration folder.\n", exeName);
 }
 
 void freeStrArray(char** array, int n_items) {
@@ -137,7 +138,7 @@ int listModpackMods(char* name) {
 	char* lines[n_lines];
 	freadLines(lines, n_lines, file);
 
-	if (n_lines > 1 || lines[0][0] != '\0') {
+	if (n_lines > 1) {
 		printf("Mods in %s:\n", name);
 		for (int i = 0; i < n_lines; i++) printf("  - %s\n", lines[i]);
 	} else { printf("'%s' is empty.", name); }
@@ -229,6 +230,9 @@ int addMods(char* name, char* directory) {
 		snprintf(srcPath, MAX_PATH_LENGTH, "%s%s", directory, filename);
 		putModIndexPath(dstPath, filename);
 
+		// we don't want to copy files to themselves
+		if (strcmp(srcPath, dstPath) == 0) continue;
+
 		int status = copyFile(srcPath, dstPath, 0);
 		if (status == 0) return ERR_OPERATION_FAIL;
 	}
@@ -236,7 +240,7 @@ int addMods(char* name, char* directory) {
 	// in variable path we have path to corresponding .mp
 	FILE* file = fopenNoCR(path, "r");
 	if (file == NULL) return ERR_OPERATION_FAIL;
-	
+
 	int n_lines = getNLines(file);
 
 	if (n_lines == 0) { // if is empty
@@ -264,6 +268,7 @@ int addMods(char* name, char* directory) {
 	
 	puts(""); // new line because i want it to be here
 
+	if (n_selected == 0) return SUCCESS_ALT;
 	return SUCCESS;
 }
 
@@ -315,6 +320,10 @@ int editModpack(char* name) {
 		if (!selectedStatuses[i]) { options[i][0] = '\0'; }
 	}
 
+	// calculate amount of mods removed
+	int n_removed = n_options - 1; // don't count "Finish" option
+	for (int i = 0; i < n_options; i++) { n_removed -= selectedStatuses[i]; }
+
 	file = fopen(path, "w");
 	if (file == NULL) return ERR_OPERATION_FAIL;
 	fwriteLines(options, n_options, file);
@@ -325,6 +334,7 @@ int editModpack(char* name) {
 
 	puts(""); // new line because why not
 
+	if (n_removed == 0) return SUCCESS_ALT;
 	return SUCCESS;
 }
 
@@ -381,9 +391,15 @@ int main(int argc, char* argv[])
 	} else if (argc == 2) {
 		char* command = argv[1];
 
-		if (strcmp(command, "list") == 0) { listModpacks(); }
-		else if (strcmp(command, "help") == 0) { printHelpText(exeName); }
-		else { printf(C_LRED"Unknown command: '%s'. Type '%s help' for help."C_RESET, command, exeName); }
+		if (strcmp(command, "list") == 0) {
+			listModpacks();
+		} else if (strcmp(command, "help") == 0) {
+			printHelpText(exeName);
+		} else if (strcmp(command, "path") == 0) {
+			puts(MODPACKS_DIRECTORY);
+		} else {
+			printf(C_LRED"Unknown command or syntax: '%s'. Type '%s help' for help."C_RESET, command, exeName);
+		}
 
 	} else if (argc == 3) {
 		char* command = argv[1];
@@ -391,9 +407,13 @@ int main(int argc, char* argv[])
 
 		if (strcmp(command, "create") == 0) {
 			int status = createModpack(arg);
-			if (status == ERR_OPERATION_FAIL) { printf(C_LRED"Fatal error: couldn't create '%s.mp'."C_RESET, arg); }
-			else if (status == ERR_ALREADY_EXISTS) { printf(C_LRED"Fatal error: '%s' already exists!"C_RESET, arg); }
-			else if (status == SUCCESS) { printf("Successfully created '%s'.", arg); }
+			if (status == ERR_OPERATION_FAIL) {
+				printf(C_LRED"Fatal error: couldn't create '%s.mp'."C_RESET, arg);
+			} else if (status == ERR_ALREADY_EXISTS) {
+				printf(C_LRED"Fatal error: '%s' already exists!"C_RESET, arg);
+			} else if (status == SUCCESS) {
+				printf("Successfully created '%s'.", arg);
+			}
 
 		} else if (strcmp(command, "delete") == 0) {
 			printf(C_LRED"Are you sure you want to delete '%s'? (y/n): ", arg);
@@ -402,28 +422,48 @@ int main(int argc, char* argv[])
 
 			if (choice == 'y' || choice == 'Y') {
 				int status = deleteModpack(arg);
-				if (status == ERR_OPERATION_FAIL) { printf(C_LRED"Fatal error: couldn't delete '%s'."C_RESET, arg); }
-				else if (status == ERR_EDITED_VANILLA) { printf(C_LRED"Fatal error: you can't delete 'vanilla'!"C_RESET); }
-				else if (status == ERR_NOT_FOUND) { printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg); }
-				else if (status == SUCCESS) { printf("Successfully deleted '%s'.", arg); }
+				if (status == ERR_OPERATION_FAIL) {
+					printf(C_LRED"Fatal error: couldn't delete '%s'."C_RESET, arg);
+				} else if (status == ERR_EDITED_VANILLA) {
+					printf(C_LRED"Fatal error: you can't delete 'vanilla'!"C_RESET);
+				}
+				else if (status == ERR_NOT_FOUND) {
+					printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg);
+				} else if (status == SUCCESS) {
+					printf("Successfully deleted '%s'.", arg);
+				}
+
 			}
 		} else if (strcmp(command, "list") == 0) {
 			int status = listModpackMods(arg);
-			if (status == ERR_TMPFILE_FAIL) { printf(C_LRED"Fatal error: failed to create temporary file! Try again."C_RESET); }
-			else if (status == ERR_NOT_FOUND) { printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg); }
+			if (status == ERR_TMPFILE_FAIL) {
+				printf(C_LRED"Fatal error: failed to create temporary file! Try again."C_RESET);
+			} else if (status == ERR_NOT_FOUND) {
+				printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg);
+			}
 
 		} else if (strcmp(command, "edit") == 0) {
 			int status = editModpack(arg);			
-			if (status == ERR_EDITED_VANILLA) { printf(C_LRED"Fatal error: you can't edit 'vanilla'!"C_RESET); }
-			else if (status == ERR_NOT_FOUND) { printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg); }
-			else if (status == ERR_ABORTED) {
+			if (status == ERR_EDITED_VANILLA) {
+				printf(C_LRED"Fatal error: you can't edit 'vanilla'!"C_RESET);
+			} else if (status == ERR_NOT_FOUND) {
+				printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg);
+			} else if (status == ERR_ABORTED) {
 				printf(C_LRED"Fatal error: operation aborted.\n");
 				printf("Don't press ESC in multichoice menus, only in case of a softlock."C_RESET);
-			} else if (status == ERR_OPERATION_FAIL) { printf(C_LRED"Fatal error: Couldn't write to modpack!"C_RESET); }
-			else if (status == SUCCESS) { printf("Successfully edited '%s'.", arg); }
+			} else if (status == ERR_OPERATION_FAIL) {
+				printf(C_LRED"Fatal error: Couldn't write to modpack!"C_RESET);
+			} else if (status == SUCCESS) {
+				printf("Successfully edited '%s'.", arg);
+			} else if (status == SUCCESS_ALT) {
+				printf("Nothing changed.");
+			}
 
 
-		} else { printf(C_LRED"Unknown command: '%s'. Type '%s help' for help. "C_RESET, command, exeName); }
+		} else {
+			printf(C_LRED"Unknown command or syntax: '%s'. Type '%s help' for help. "C_RESET, command, exeName);
+		}
+
 	} else if (argc == 4) {
 		char* command = argv[1];
 		char* arg1 = argv[2];
@@ -436,16 +476,26 @@ int main(int argc, char* argv[])
 
 			int status = addMods(arg1, directory);
 
-			if (status == ERR_NO_FILES) { printf(C_LRED"Fatal error: No mods found in '%s'!"C_RESET, arg2); }
-			else if (status == ERR_EDITED_VANILLA) { printf(C_LRED"Fatal error: you can't edit 'vanilla'!"C_RESET); }
-			else if (status == ERR_NOT_FOUND) { printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg1); }
-			else if (status == ERR_ABORTED) {
+			if (status == ERR_NO_FILES) {
+				printf(C_LRED"Fatal error: No mods found in '%s'!"C_RESET, arg2);
+			} else if (status == ERR_EDITED_VANILLA) {
+				printf(C_LRED"Fatal error: you can't edit 'vanilla'!"C_RESET);
+			} else if (status == ERR_NOT_FOUND) {
+				printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg1);
+			} else if (status == ERR_ABORTED) {
 				printf(C_LRED"Fatal error: operation aborted.\n");
 				printf("Don't press ESC in multichoice menus, only in case of a softlock."C_RESET);
-			} else if (status == ERR_OPERATION_FAIL) { printf(C_LRED"Fatal error: Couldn't copy files or write to modpack!"C_RESET); }
-			else if (status == SUCCESS) { printf("Successfully added mods to '%s'.", arg1); }
+			} else if (status == ERR_OPERATION_FAIL) {
+				printf(C_LRED"Fatal error: Couldn't copy files or write to modpack!"C_RESET);
+			} else if (status == SUCCESS) {
+				printf("Successfully added mods to '%s'.", arg1);
+			} else if (status == SUCCESS_ALT) {
+				printf("Nothing changed.");
+			}
 
-		} else { printf(C_LRED"Unknown command: '%s'. Type '%s help' for help. "C_RESET, command, exeName); }
+		} else {
+			printf(C_LRED"Unknown command or syntax: '%s'. Type '%s help' for help. "C_RESET, command, exeName);
+		}
 	}
 
 	puts(""); // another new line because why not
