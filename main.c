@@ -7,8 +7,8 @@
 #define MAX_PATH_LENGTH 256
 #define MAX_GETUSERNAME_ATTEMPTS 5
 
-#define MINECRAFT_DIRECTORY_TEMPLATE "C:\\Users\\%s\\AppData\\Roaming\\.minecraft\\"
-#define MODPACKS_DIRECTORY_TEMPLATE "C:\\Users\\%s\\AppData\\Roaming\\.minecraft\\mods\\mcmpm-modpacks\\"
+#define MINECRAFT_DIRECTORY_TEMPLATE "C:/Users/%s/AppData/Roaming/.minecraft/"
+#define MODPACKS_DIRECTORY_TEMPLATE "C:/Users/%s/AppData/Roaming/.minecraft/mods/mcmpm-modpacks/"
 
 #define C_LRED "\e[0;91m"
 #define C_YELLOW "\e[0;33m"
@@ -17,6 +17,7 @@
 // status codes
 #define SUCCESS 0
 #define SUCCESS_ALT 1
+#define SUCCESS_WARN 2
 #define ERR_OPERATION_FAIL -1
 #define ERR_ALREADY_EXISTS -2
 #define ERR_NOT_FOUND -3
@@ -84,6 +85,7 @@ void printHelpText(char* exeName) {
 	printf("%s edit <modpack> - remove chosen mods from <modpack>\n", exeName);
 	printf("%s path - print the path to configuration folder.\n", exeName);
 	printf("%s current - show currently active mods.\n", exeName);
+	printf("%s load <modpack> - load <modpack>.\n", exeName);
 }
 
 void freeStrArray(char** array, int n_items) {
@@ -374,6 +376,93 @@ void listCurrentMods() {
 	for (int i = 0; i < n_mods; i++) { printf("   - %s\n", mods[i]); }
 }
 
+void deleteCurrentMods() {
+	// define mods folder directory
+	char directory[MAX_PATH_LENGTH];
+	snprintf(directory, MAX_PATH_LENGTH, "%smods/", MINECRAFT_DIRECTORY);
+
+	int n_mods = getNFiles(directory, "jar");
+
+	char* mods[n_mods];
+	findFiles(mods, "jar", n_mods, directory);
+
+	for (int i = 0; i < n_mods; i++) {
+		char* mod = mods[i];
+		// get mod path
+		char path[MAX_PATH_LENGTH];
+		snprintf(path, MAX_PATH_LENGTH, "%s%s", directory, mod);
+
+		// delete mod and free() string
+		remove(path);
+		free(mod);
+	}
+}
+
+int loadModpack(char* name) {
+	// get modpack path
+	char path[MAX_PATH_LENGTH];
+	putModpackPath(path, name);
+
+	FILE* file;
+
+	file = fopenNoCR(path, "r");
+
+	// if either modpack doesn't exist or failed to create tmpfile
+	if (file == NULL) {
+		if (!isfile(path)) return ERR_NOT_FOUND; // modpack doesn't exist
+
+		// if the modpack exists, then tmpfile() failed
+		return ERR_TMPFILE_FAIL;
+	}
+
+	int n_lines = getNLines(file);
+
+	char* lines[n_lines];
+	freadLines(lines, n_lines, file);
+
+	// check if all listed mods exist
+	int allExist = 1; // by default they do
+	for (int i = 0; i < n_lines; i++) {
+		char* mod = lines[i];
+		char modPath[MAX_PATH_LENGTH];
+		snprintf(modPath, MAX_PATH_LENGTH, "%smods/mcmpm-modpacks/%s", MINECRAFT_DIRECTORY, mod);
+		if (!isfile(modPath)) {
+			allExist = 0;
+			printf(C_YELLOW"Not found: %s\n"C_RESET, mod);
+		}
+	}
+
+	if (!allExist) {
+		printf(C_YELLOW"Not all listed mods are found. Are you sure you want to proceed? (y/n) ");
+		char choice = getch();
+		printf("%c\n"C_RESET, choice);
+
+		if (!(choice == 'y' || choice == 'Y')) return ERR_ABORTED;
+	}
+
+	deleteCurrentMods();
+
+	// copy mods
+	for (int i = 0; i < n_lines; i++) {
+		char* mod = lines[i];
+		
+		char srcPath[MAX_PATH_LENGTH];
+		char dstPath[MAX_PATH_LENGTH];
+
+		putModIndexPath(srcPath, mod);
+		snprintf(dstPath, MAX_PATH_LENGTH, "%smods/%s", MINECRAFT_DIRECTORY, mod);
+
+		int status = copyFile(srcPath, dstPath, 0);
+		if (status == 0) { // copyfile return 0 in error
+			printf(C_LRED"errcode: %d\n"C_RESET, GetLastError());
+			return ERR_OPERATION_FAIL;
+		}
+	}
+
+	if (allExist) return SUCCESS;
+	return SUCCESS_WARN;
+}
+
 int main(int argc, char* argv[])
 {
 	// PRE INITIALISATION (some important constants)
@@ -406,6 +495,7 @@ int main(int argc, char* argv[])
 	} else if (status == SUCCESS_ALT) {
 		printf("\nConfiguration not found. Created a new one.\n");
 	}
+
 
 	puts(""); // new line because why not
 
@@ -485,6 +575,21 @@ int main(int argc, char* argv[])
 				printf("Nothing changed.");
 			}
 
+		} else if (strcmp(command, "load") == 0) {
+			int status = loadModpack(arg);
+			if (status == ERR_OPERATION_FAIL) {
+				printf(C_LRED"Fatal error: Failed to copy some files!"C_RESET);
+			} else if (status == ERR_NOT_FOUND) {
+				printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg);
+			} else if (status == ERR_TMPFILE_FAIL) {
+				printf(C_LRED"Fatal error: failed to create temporary file! Try again."C_RESET);
+			} else if (status == ERR_ABORTED) {
+				printf(C_LRED"User aborted."C_RESET);
+			} else if (status == SUCCESS) {
+				printf("Successfully loaded '%s'", arg);
+			} else if (status == SUCCESS_WARN) {
+				printf(C_YELLOW"Loaded '%s' with some mods missing.", arg);
+			}
 
 		} else {
 			printf(C_LRED"Unknown command or syntax: '%s'. Type '%s help' for help. "C_RESET, command, exeName);
