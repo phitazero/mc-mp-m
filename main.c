@@ -10,8 +10,12 @@
 #define MINECRAFT_DIRECTORY_TEMPLATE "C:/Users/%s/AppData/Roaming/.minecraft/"
 #define MODPACKS_DIRECTORY_TEMPLATE "C:/Users/%s/AppData/Roaming/.minecraft/mods/mcmpm-modpacks/"
 
+#define VERSION "1.0"
+
 #define C_LRED "\e[0;91m"
 #define C_YELLOW "\e[0;33m"
+#define C_LGREEN "\e[0;92m"
+#define C_LMAGENTA "\e[0;95m"
 #define C_RESET "\e[0m"
 
 // status codes
@@ -143,7 +147,7 @@ int listModpackMods(char* name) {
 	char* lines[n_lines];
 	freadLines(lines, n_lines, file);
 
-	if (n_lines > 1) {
+	if (n_lines > 0) {
 		printf("Mods in %s:\n", name);
 		for (int i = 0; i < n_lines; i++) printf(" - %s\n", lines[i]);
 	} else { printf("'%s' is empty.", name); }
@@ -501,7 +505,12 @@ int main(int argc, char* argv[])
 
 	// COMMAND HANDLING
 	if (argc == 1) {
-		printf("MineCraft ModPack Manager\nType '%s help' for help.", exeName);
+		puts(C_LMAGENTA"+=============================+");
+		puts("|  MineCraft ModPack Manager  |");
+		puts("+=============================+"C_RESET);
+		puts("v"VERSION", by Phi\n");
+		printf("Type '%s help' for help.", exeName);
+
 	} else if (argc == 2) {
 		char* command = argv[1];
 
@@ -528,7 +537,7 @@ int main(int argc, char* argv[])
 			} else if (status == ERR_ALREADY_EXISTS) {
 				printf(C_LRED"Fatal error: '%s' already exists!"C_RESET, arg);
 			} else if (status == SUCCESS) {
-				printf("Successfully created '%s'.", arg);
+				printf(C_LGREEN"Successfully created '%s'."C_RESET, arg);
 			}
 
 		} else if (strcmp(command, "delete") == 0) {
@@ -546,7 +555,7 @@ int main(int argc, char* argv[])
 				else if (status == ERR_NOT_FOUND) {
 					printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg);
 				} else if (status == SUCCESS) {
-					printf("Successfully deleted '%s'.", arg);
+					printf(C_LGREEN"Successfully deleted '%s'."C_RESET, arg);
 				}
 
 			}
@@ -570,7 +579,7 @@ int main(int argc, char* argv[])
 			} else if (status == ERR_OPERATION_FAIL) {
 				printf(C_LRED"Fatal error: Couldn't write to modpack!"C_RESET);
 			} else if (status == SUCCESS) {
-				printf("Successfully edited '%s'.", arg);
+				printf(C_LGREEN"Successfully edited '%s'."C_RESET, arg);
 			} else if (status == SUCCESS_ALT) {
 				printf("Nothing changed.");
 			}
@@ -586,7 +595,7 @@ int main(int argc, char* argv[])
 			} else if (status == ERR_ABORTED) {
 				printf(C_LRED"User aborted."C_RESET);
 			} else if (status == SUCCESS) {
-				printf("Successfully loaded '%s'", arg);
+				printf(C_LGREEN"Successfully loaded '%s'"C_RESET, arg);
 			} else if (status == SUCCESS_WARN) {
 				printf(C_YELLOW"Loaded '%s' with some mods missing.", arg);
 			}
@@ -619,7 +628,7 @@ int main(int argc, char* argv[])
 			} else if (status == ERR_OPERATION_FAIL) {
 				printf(C_LRED"Fatal error: Couldn't copy files or write to modpack!"C_RESET);
 			} else if (status == SUCCESS) {
-				printf("Successfully added mods to '%s'.", arg1);
+				printf(C_LGREEN"Successfully added mods to '%s'."C_RESET, arg1);
 			} else if (status == SUCCESS_ALT) {
 				printf("Nothing changed.");
 			}
