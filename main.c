@@ -11,7 +11,7 @@
 #define MINECRAFT_DIRECTORY_TEMPLATE "C:/Users/%s/AppData/Roaming/.minecraft/"
 #define MODPACKS_DIRECTORY_TEMPLATE "C:/Users/%s/AppData/Roaming/.minecraft/mods/mcmpm-modpacks/"
 
-#define VERSION "1.0"
+#define VERSION "1.1"
 
 #define C_LRED "\e[0;91m"
 #define C_YELLOW "\e[0;33m"
