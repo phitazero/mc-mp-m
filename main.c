@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <windows.h>
 #include "files.h"
 #include "scui.h"
@@ -402,6 +403,50 @@ void deleteCurrentMods() {
 	}
 }
 
+int selectModpack(char* out) {
+	int n_modpacks = getNFiles(MODPACKS_DIRECTORY, "mp");
+
+	// options are all available modpacks + "Cancel" option
+	int n_options = n_modpacks + 1;
+	char* options[n_options];
+
+	char cancelOption[] = "Cancel";
+	options[0] = cancelOption;
+
+	// leaving 0th place for "Cancel" option
+	findFiles(options + 1, "mp", n_modpacks, MODPACKS_DIRECTORY);
+
+	// remove .mp extension at the end for all modpacks
+	for (int i = 1; i < n_options; i++) {
+		int length = strlen(options[i]);
+		options[i][length - 3] = '\0';
+	}
+
+	// swap 1st option with 'vanilla', i. e. put 'vanilla' modpack right below "Cancel"
+	int vanillaIndex;
+	for (int i = 1; i < n_options; i++) {
+		if (strcmp(options[i], "vanilla") == 0) {
+			vanillaIndex = i;
+			break;
+		}
+	}
+	char* buffer = options[1]; // put the modpack to be swapped out into buffer
+	options[1] = options[vanillaIndex];
+	options[vanillaIndex] = buffer;
+
+	int selected = singlechoice(n_options, options);
+
+	if (selected == 0) {
+		out[0] = '\0';
+		return SUCCESS;
+	} else if (selected == -1) {
+		return ERR_ABORTED;
+	} else {
+		strcpy(out, options[selected]);
+		return SUCCESS;
+	}
+}
+
 int loadModpack(char* name) {
 	// get modpack path
 	char path[MAX_PATH_LENGTH];
@@ -411,11 +456,9 @@ int loadModpack(char* name) {
 
 	file = fopenNoCR(path, "r");
 
-	// if either modpack doesn't exist or failed to create tmpfile
+	// if failed to create tmpfile
 	if (file == NULL) {
-		if (!isfile(path)) return ERR_NOT_FOUND; // modpack doesn't exist
-
-		// if the modpack exists, then tmpfile() failed
+		// the modpack certainly exists, tmpfile() failed
 		return ERR_TMPFILE_FAIL;
 	}
 
@@ -500,6 +543,18 @@ int main(int argc, char* argv[])
 		printf("\nConfiguration not found. Created a new one.\n");
 	}
 
+	// if first arg is [gs] we replace it with modpack, selected with GUI
+	if (argc > 2 && strcmp(argv[2], "[gs]") == 0) {
+		char* modpack = malloc(MAX_PATH_LENGTH);
+
+		int status = selectModpack(modpack);
+		if (status == ERR_ABORTED) {
+			printf(C_LRED"User aborted."C_RESET);
+			return 0;
+		} else if (modpack[0] == '\0') return 0;
+
+		argv[2] = modpack;
+	}
 
 	puts(""); // new line because why not
 
@@ -551,8 +606,7 @@ int main(int argc, char* argv[])
 					printf(C_LRED"Fatal error: couldn't delete '%s'."C_RESET, arg);
 				} else if (status == ERR_EDITED_VANILLA) {
 					printf(C_LRED"Fatal error: you can't delete 'vanilla'!"C_RESET);
-				}
-				else if (status == ERR_NOT_FOUND) {
+				} else if (status == ERR_NOT_FOUND) {
 					printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg);
 				} else if (status == SUCCESS) {
 					printf(C_LGREEN"Successfully deleted '%s'."C_RESET, arg);
@@ -588,8 +642,6 @@ int main(int argc, char* argv[])
 			int status = loadModpack(arg);
 			if (status == ERR_OPERATION_FAIL) {
 				printf(C_LRED"Fatal error: Failed to copy some files!"C_RESET);
-			} else if (status == ERR_NOT_FOUND) {
-				printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg);
 			} else if (status == ERR_TMPFILE_FAIL) {
 				printf(C_LRED"Fatal error: failed to create temporary file! Try again."C_RESET);
 			} else if (status == ERR_ABORTED) {
