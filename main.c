@@ -79,6 +79,7 @@ int init(char* username) {
 }
 
 void printHelpText(char* exeName) {
+	printf("You can use [gs] as modpack name to select modpack with GUI.\n\n");
 	printf("%s help - get help\n", exeName);
 	printf("%s list - show all existing modpacks\n", exeName);
 	printf("%s create <modpack> - create a modpack with name <modpack>\n", exeName);
@@ -184,15 +185,15 @@ int addMods(char* name, char* directory) {
 	int n_jars = getNFiles(directory, "jar");
 	if (n_jars == 0) return ERR_NO_FILES;
 
-	// options are all available .jars + "Finish" option
+	// options are all available .jars + "[Finish]" option
 	int n_options = n_jars + 1;
 	char* options[n_options];
 
-	// adding the "Finish" option to the first position
-	char finishOption[] = "Finish";
+	// adding the "[Finish]" option to the first position
+	char finishOption[] = "[Finish]";
 	options[0] = finishOption;
 
-	// 0th index in options is reserved for "Finish", so start writing from the 1st index
+	// 0th index in options is reserved for "[Finish]", so start writing from the 1st index
 	findFiles(options + 1, "jar", n_jars, directory);
 
 	// initialize the array of chosen option with none chosen by default
@@ -200,9 +201,9 @@ int addMods(char* name, char* directory) {
 	memset(selectedStatuses, 0, n_options*sizeof(int));
 
 	for (;;) {
-		int choice = multichoice(n_options, options, selectedStatuses);
+		int choice = multichoiceWStates(n_options, options, selectedStatuses);
 
-		// break if selectedStatuses "Finish"
+		// break if selectedStatuses "[Finish]"
 		if (choice == 0) break;
 		// or if pressed ESC
 		if (choice == -1) return ERR_ABORTED;
@@ -224,7 +225,7 @@ int addMods(char* name, char* directory) {
 			selected[j] = options[i];
 			j++;
 		} else {
-			// we don't want to free "Finish" allocated in stack
+			// we don't want to free "[Finish]" allocated in stack
 			if (i != 0) { free(options[i]); }
 		}
 	}
@@ -296,27 +297,27 @@ int editModpack(char* name) {
 
 	int n_modpacks = getNLines(file);
 
-	// options are all modpacks + "Finish" option
+	// options are all modpacks + "[Finish]" option
 	int n_options = n_modpacks + 1;
 	char* options[n_options];
 
-	// adding the "Finish" option to the first position
-	char finishOption[] = "Finish";
+	// adding the "[Finish]" option to the first position
+	char finishOption[] = "[Finish]";
 	options[0] = finishOption;
 
-	// 0th index in options is reserved for "Finish", so start writing from the 1st index
+	// 0th index in options is reserved for "[Finish]", so start writing from the 1st index
 	freadLines(options + 1, n_modpacks, file);
 	fclose(file);
 
-	// initialize the array of chosen options with every options (except "Finish") chosen by default
+	// initialize the array of chosen options with every options (except "[Finish]") chosen by default
 	int selectedStatuses[n_options];
 	selectedStatuses[0] = 0;
 	for (int i = 1; i < n_options; i++) { selectedStatuses[i] = 1; }
 
 	for (;;) {
-		int choice = multichoice(n_options, options, selectedStatuses);
+		int choice = multichoiceWStates(n_options, options, selectedStatuses);
 
-		// break if selectedStatuses "Finish"
+		// break if selectedStatuses "[Finish]"
 		if (choice == 0) break;
 		// or if pressed ESC
 		if (choice == -1) return ERR_ABORTED;
@@ -331,7 +332,7 @@ int editModpack(char* name) {
 	}
 
 	// calculate amount of mods removed
-	int n_removed = n_options - 1; // don't count "Finish" option
+	int n_removed = n_options - 1; // don't count "[Finish]" option
 	for (int i = 0; i < n_options; i++) { n_removed -= selectedStatuses[i]; }
 
 	file = fopen(path, "w");
@@ -339,7 +340,7 @@ int editModpack(char* name) {
 	fwriteLines(options, n_options, file);
 	fclose(file);
 
-	// start with 1 because we don't want to free "Finish"
+	// start with 1 because we don't want to free "[Finish]"
 	for (int i = 1; i < n_options; i++) { free(options[i]); }
 
 	puts(""); // new line because why not
@@ -406,14 +407,14 @@ void deleteCurrentMods() {
 int selectModpack(char* out) {
 	int n_modpacks = getNFiles(MODPACKS_DIRECTORY, "mp");
 
-	// options are all available modpacks + "Cancel" option
+	// options are all available modpacks + "[Cancel]" option
 	int n_options = n_modpacks + 1;
 	char* options[n_options];
 
-	char cancelOption[] = "Cancel";
+	char cancelOption[] = "[Cancel]";
 	options[0] = cancelOption;
 
-	// leaving 0th place for "Cancel" option
+	// leaving 0th place for "[Cancel]" option
 	findFiles(options + 1, "mp", n_modpacks, MODPACKS_DIRECTORY);
 
 	// remove .mp extension at the end for all modpacks
@@ -422,7 +423,7 @@ int selectModpack(char* out) {
 		options[i][length - 3] = '\0';
 	}
 
-	// swap 1st option with 'vanilla', i. e. put 'vanilla' modpack right below "Cancel"
+	// swap 1st option with 'vanilla', i. e. put 'vanilla' modpack right below "[Cancel]"
 	int vanillaIndex;
 	for (int i = 1; i < n_options; i++) {
 		if (strcmp(options[i], "vanilla") == 0) {
@@ -434,7 +435,7 @@ int selectModpack(char* out) {
 	options[1] = options[vanillaIndex];
 	options[vanillaIndex] = buffer;
 
-	int selected = singlechoice(n_options, options);
+	int selected = multichoice(n_options, options);
 
 	if (selected == 0) {
 		out[0] = '\0';
@@ -526,6 +527,7 @@ int main(int argc, char* argv[])
 		n_attempts++;
 		if (n_attempts > MAX_GETUSERNAME_ATTEMPTS) {
 			printf(C_LRED"Fatal error: Damn GetUserName() refuses to work normally, can't do anything about it."C_RESET);
+			return 0;
 		}
 	} while (usernameLength != strlen(username) + 1);
 

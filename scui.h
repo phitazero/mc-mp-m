@@ -11,7 +11,7 @@
 #define KEY_ESC 27
 
 // selected[i] is a bool (formally and int) indicating whether options[i] was selected
-int multichoice(int n_options, char* options[], int* selected) {
+int multichoiceWStates(int n_options, char* options[], int* selected) {
 	if (n_options < 1) return -1;
 
 	static int current = 0; // index of currently selected option
@@ -21,7 +21,7 @@ int multichoice(int n_options, char* options[], int* selected) {
 		for (int i = 0; i < n_options; i++) {
 			char indexColor[9]; // the color applied to the index label
 			if (i == current) strcpy(indexColor, C_CURRENT);
-			else strcpy(indexColor, C_RESET);
+			else strcpy(indexColor, C_UNSELECTED);
 
 			char textColor[8]; // the color applies to the text of the option
 			if (selected[i]) { strcpy(textColor, C_RESET); }
@@ -47,7 +47,7 @@ int multichoice(int n_options, char* options[], int* selected) {
 	}
 }
 
-int singlechoice(int n_options, char* options[]) {
+int multichoice(int n_options, char* options[]) {
 	if (n_options < 1) return -1;
 
 	static int current = 0; // index of currently selected option
@@ -57,7 +57,7 @@ int singlechoice(int n_options, char* options[]) {
 		for (int i = 0; i < n_options; i++) {
 			char indexColor[9]; // the color applied to the index label
 			if (i == current) strcpy(indexColor, C_CURRENT);
-			else strcpy(indexColor, C_RESET);
+			else strcpy(indexColor, C_UNSELECTED);
 
 			printf("%s[%d]"C_RESET" %s\n"C_RESET, indexColor, i, options[i]);
 		}
