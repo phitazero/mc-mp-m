@@ -10,6 +10,7 @@
 
 #define MINECRAFT_DIRECTORY_TEMPLATE "C:/Users/%s/AppData/Roaming/.minecraft/"
 #define MODPACKS_DIRECTORY_TEMPLATE "C:/Users/%s/AppData/Roaming/.minecraft/mods/mcmpm-modpacks/"
+#define MODS_DIRECTORY_TEMPLATE "C:/Users/%s/AppData/Roaming/.minecraft/mods/"
 
 #define VERSION "1.1"
 
@@ -34,6 +35,7 @@
 
 char MINECRAFT_DIRECTORY[MAX_PATH_LENGTH];
 char MODPACKS_DIRECTORY[MAX_PATH_LENGTH];
+char MODS_DIRECTORY[MAX_PATH_LENGTH];
 
 // puts C:\Users\<user>\AppData\Roaming\.minecraft\mods\mcmpm-modpacks\<modpack name> in out
 void putModIndexPath(char* out, char* name) {
@@ -50,6 +52,7 @@ int init(char* username) {
 	// replace %s with <user> in path templates
 	snprintf(MINECRAFT_DIRECTORY, MAX_PATH_LENGTH, MINECRAFT_DIRECTORY_TEMPLATE, username);
 	snprintf(MODPACKS_DIRECTORY, MAX_PATH_LENGTH, MODPACKS_DIRECTORY_TEMPLATE, username);
+	snprintf(MODS_DIRECTORY, MAX_PATH_LENGTH, MODS_DIRECTORY_TEMPLATE, username);
 
 	FILE* file;
 	char path[MAX_PATH_LENGTH];
@@ -353,7 +356,7 @@ void directoryFormat(char* directory) {
 	if (strcmp(directory, "index") == 0) { // "index" means the mcmpm directory
 		strcpy(directory, MODPACKS_DIRECTORY);
 	} else if (strcmp(directory, "mods") == 0) { // "mods" is the default minecraft mods folder
-		snprintf(directory, MAX_PATH_LENGTH, "%smods/", MINECRAFT_DIRECTORY);
+		strcpy(directory, MODS_DIRECTORY);
 	} else {
 		int length = strlen(directory);
 		if (directory[length - 1] != '/') { // if doesn't end with / add it
@@ -364,39 +367,35 @@ void directoryFormat(char* directory) {
 }
 
 void listCurrentMods() {
-	// get the directory of minecraft mods folder
-	char directory[MAX_PATH_LENGTH];
-	snprintf(directory, MAX_PATH_LENGTH, "%smods/", MINECRAFT_DIRECTORY);
-
-	int n_mods = getNFiles(directory, "jar");
+	int n_mods = getNFiles(MODS_DIRECTORY, "jar");
 
 	if (n_mods == 0) {
-		printf("No mods found.\n");
+		printf("No mods found.\n\nCurrently active modpack is 'vanilla'.");
 		return;
 	}
 
 	char* mods[n_mods];
-	findFiles(mods, "jar", n_mods, directory);
+	findFiles(mods, "jar", n_mods, MODS_DIRECTORY);
 
 	puts("Currently active mods:");
 	for (int i = 0; i < n_mods; i++) { printf("   - %s\n", mods[i]); }
+
+	puts("");
+	// for a future change:
+	// printCurrentModpack(mods, n_mods);
 }
 
 void deleteCurrentMods() {
-	// define mods folder directory
-	char directory[MAX_PATH_LENGTH];
-	snprintf(directory, MAX_PATH_LENGTH, "%smods/", MINECRAFT_DIRECTORY);
-
-	int n_mods = getNFiles(directory, "jar");
+	int n_mods = getNFiles(MODS_DIRECTORY, "jar");
 
 	char* mods[n_mods];
-	findFiles(mods, "jar", n_mods, directory);
+	findFiles(mods, "jar", n_mods, MODS_DIRECTORY);
 
 	for (int i = 0; i < n_mods; i++) {
 		char* mod = mods[i];
 		// get mod path
 		char path[MAX_PATH_LENGTH];
-		snprintf(path, MAX_PATH_LENGTH, "%s%s", directory, mod);
+		snprintf(path, MAX_PATH_LENGTH, "%s%s", MODS_DIRECTORY, mod);
 
 		// delete mod and free() string
 		remove(path);
@@ -473,7 +472,7 @@ int loadModpack(char* name) {
 	for (int i = 0; i < n_lines; i++) {
 		char* mod = lines[i];
 		char modPath[MAX_PATH_LENGTH];
-		snprintf(modPath, MAX_PATH_LENGTH, "%smods/mcmpm-modpacks/%s", MINECRAFT_DIRECTORY, mod);
+		snprintf(modPath, MAX_PATH_LENGTH, "%s%s", MODPACKS_DIRECTORY, mod);
 		if (!isfile(modPath)) {
 			allExist = 0;
 			printf(C_YELLOW"Not found: %s\n"C_RESET, mod);
@@ -498,7 +497,7 @@ int loadModpack(char* name) {
 		char dstPath[MAX_PATH_LENGTH];
 
 		putModIndexPath(srcPath, mod);
-		snprintf(dstPath, MAX_PATH_LENGTH, "%smods/%s", MINECRAFT_DIRECTORY, mod);
+		snprintf(dstPath, MAX_PATH_LENGTH, "%s%s", MODS_DIRECTORY, mod);
 
 		int status = copyFile(srcPath, dstPath, 0);
 		if (status == 0) { // copyfile return 0 in error
