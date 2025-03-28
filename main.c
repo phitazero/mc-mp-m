@@ -12,7 +12,7 @@
 #define MODPACKS_DIRECTORY_TEMPLATE "C:/Users/%s/AppData/Roaming/.minecraft/mods/mcmpm-modpacks/"
 #define MODS_DIRECTORY_TEMPLATE "C:/Users/%s/AppData/Roaming/.minecraft/mods/"
 
-#define VERSION "1.1"
+#define VERSION "1.2"
 
 #define C_LRED "\e[0;91m"
 #define C_YELLOW "\e[0;33m"
@@ -366,11 +366,53 @@ void directoryFormat(char* directory) {
 	}
 }
 
+// compares arrays of strings (order doesn't matter)
+int strarrcmp(char** arr1, char** arr2, int length) {
+	// count of mathing strings
+	int n_matches = 0;
+
+	for (int i = 0; i < length; i++) {
+		for (int j = 0; j < length; j++) {
+			n_matches += ( strcmp(arr1[i], arr2[j]) == 0 );
+		}
+	}
+	return 1 - n_matches == length; // we want 0 to mean equality, as with strcmp
+}
+
+void printCurrentModpack(char* mods[], int n_mods) {
+	int n_modpacks = getNFiles(MODPACKS_DIRECTORY, "mp");
+	char* modpacks[n_modpacks];
+	findFiles(modpacks, "mp", n_modpacks, MODPACKS_DIRECTORY);
+
+	for (int i = 0; i < n_modpacks; i++) {
+		char* modpack = modpacks[i];
+
+		char path[MAX_PATH_LENGTH];
+		snprintf(path, MAX_PATH_LENGTH, "%s%s", MODPACKS_DIRECTORY, modpack);
+		FILE* file = fopenNoCR(path, "r");
+
+		// mpmod - a mod saved in the modpack
+		// mod - a mod in mods folder
+		int n_mpmods = getNLines(file);
+
+		if (n_mpmods != n_mods) continue;
+
+		char* npmods[n_mpmods];
+		freadLines(npmods, n_mpmods, file);
+
+		if (strarrcmp(mods, npmods, n_mods) == 0) {
+			printf("Currently loaded modpack is '%s'.\n", modpack);
+			return;	
+		}
+	}
+	puts(C_LRED"None of existing modpacks matches currently loaded mods."C_RESET);
+}
+
 void listCurrentMods() {
 	int n_mods = getNFiles(MODS_DIRECTORY, "jar");
 
 	if (n_mods == 0) {
-		printf("No mods found.\n\nCurrently active modpack is 'vanilla'.");
+		printf("No mods found.\n\nCurrently loaded modpack is 'vanilla'.");
 		return;
 	}
 
@@ -381,8 +423,8 @@ void listCurrentMods() {
 	for (int i = 0; i < n_mods; i++) { printf("   - %s\n", mods[i]); }
 
 	puts("");
-	// for a future change:
-	// printCurrentModpack(mods, n_mods);
+
+	printCurrentModpack(mods, n_mods);
 }
 
 void deleteCurrentMods() {
