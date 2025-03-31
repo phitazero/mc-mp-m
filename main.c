@@ -12,7 +12,7 @@
 #define MODPACKS_DIRECTORY_TEMPLATE "C:/Users/%s/AppData/Roaming/.minecraft/mods/mcmpm-modpacks/"
 #define MODS_DIRECTORY_TEMPLATE "C:/Users/%s/AppData/Roaming/.minecraft/mods/"
 
-#define VERSION "1.2"
+#define VERSION "1.2.1"
 
 #define C_LRED "\e[0;91m"
 #define C_YELLOW "\e[0;33m"
@@ -82,7 +82,7 @@ int init(char* username) {
 }
 
 void printHelpText(char* exeName) {
-	printf("You can use [gs] as modpack name to select modpack with GUI.\n\n");
+	printf("You can use _ as modpack name to select modpack with GUI.\n\n");
 	printf("%s help - get help\n", exeName);
 	printf("%s list - show all existing modpacks\n", exeName);
 	printf("%s create <modpack> - create a modpack with name <modpack>\n", exeName);
@@ -586,8 +586,8 @@ int main(int argc, char* argv[])
 		printf("\nConfiguration not found. Created a new one.\n");
 	}
 
-	// if first arg is [gs] we replace it with modpack, selected with GUI
-	if (argc > 2 && strcmp(argv[2], "[gs]") == 0) {
+	// if first arg is _ we replace it with modpack, selected with GUI
+	if (argc > 2 && strcmp(argv[2], "_") == 0) {
 		char* modpack = malloc(MAX_PATH_LENGTH);
 
 		int status = selectModpack(modpack);
