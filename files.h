@@ -2,6 +2,7 @@
 
 #include <windows.h>
 #include <string.h>
+#include <io.h>
 
 #define MAX_PATH_LENGTH 256
 
@@ -148,6 +149,14 @@ void fwriteLines(char** lines, int n_lines, FILE* file) {
 					// leave the last line without '\n'
 				}
 			}
+		} else if (i == n_lines - 1) { // if it's the last line, it's empty, we left a \n at the end
+			fflush(file);
+			int fd = _fileno(file);
+			// After fputc the cursor is after the last byte, (considering indexing differences) it's equal
+			// to current size of file. Subtract 2 to remove \n and \r which windows (hate it) adds
+			int newFileSize = ftell(file) - 2;
+			int status = _chsize(fd, newFileSize);
+			printf("%d\n", status);
 		}
 	}
 }

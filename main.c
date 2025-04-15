@@ -12,7 +12,7 @@
 #define MODPACKS_DIRECTORY_TEMPLATE "C:/Users/%s/AppData/Roaming/.minecraft/mods/mcmpm-modpacks/"
 #define MODS_DIRECTORY_TEMPLATE "C:/Users/%s/AppData/Roaming/.minecraft/mods/"
 
-#define VERSION "1.2.1"
+#define VERSION "1.2.2"
 
 #define C_LRED "\e[0;91m"
 #define C_YELLOW "\e[0;33m"
@@ -338,6 +338,9 @@ int editModpack(char* name) {
 	int n_removed = n_options - 1; // don't count "[Finish]" option
 	for (int i = 0; i < n_options; i++) { n_removed -= selectedStatuses[i]; }
 
+	for (int i = 0; i < n_options; i++) { printf("%s|\n", options[i]); }
+	puts("end here");
+
 	file = fopen(path, "w");
 	if (file == NULL) return ERR_OPERATION_FAIL;
 	fwriteLines(options, n_options, file);
@@ -401,6 +404,7 @@ void printCurrentModpack(char* mods[], int n_mods) {
 		freadLines(npmods, n_mpmods, file);
 
 		if (strarrcmp(mods, npmods, n_mods) == 0) {
+			modpack[strlen(modpack) - 3] = '\0'; // remove .mp at the end
 			printf("Currently loaded modpack is '%s'.\n", modpack);
 			return;	
 		}
@@ -500,7 +504,11 @@ int loadModpack(char* name) {
 
 	// if failed to create tmpfile
 	if (file == NULL) {
-		// the modpack certainly exists, tmpfile() failed
+		file = fopen(path, "r"); // test if modpack exists
+
+		if (file == NULL) return ERR_NOT_FOUND; // modpack doesn't exist
+
+		fclose(file);
 		return ERR_TMPFILE_FAIL;
 	}
 
@@ -691,6 +699,8 @@ int main(int argc, char* argv[])
 				printf(C_LRED"User aborted."C_RESET);
 			} else if (status == SUCCESS) {
 				printf(C_LGREEN"Successfully loaded '%s'"C_RESET, arg);
+			} else if (status == ERR_NOT_FOUND) {
+				printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg);
 			} else if (status == SUCCESS_WARN) {
 				printf(C_YELLOW"Loaded '%s' with some mods missing.", arg);
 			}
