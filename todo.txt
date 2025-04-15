@@ -1,3 +1,4 @@
 TODO:
 1) Fix wrong error when trying to load a nonexistent modpack
 2) Fix empty line at the end of .mp after deleting last mod in modpack
+3) Remove .mp from modpack name shown in 'mcmpm current'
