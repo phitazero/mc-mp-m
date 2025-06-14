@@ -1,22 +1,37 @@
-#include <conio.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <termios.h>
+#include <unistd.h>
 
 #define C_RESET "\e[0m"
 #define C_CURRENT "\e[30;47m"
 #define C_UNSELECTED "\e[0;90m"
 
-#define KEY_ENTER 13
-#define KEY_ESC 27
+#define KEY_ENTER 10
 
-// selected[i] is a bool (formally and int) indicating whether options[i] was selected
+int getch() {
+	struct termios oldt, newt;
+	int ch;
+
+	tcgetattr(STDIN_FILENO, &oldt);
+	newt = oldt;
+	newt.c_lflag &= ~(ICANON | ECHO);
+	tcsetattr(STDIN_FILENO, TCSANOW, &newt);
+
+	ch = getchar();
+
+	tcsetattr(STDIN_FILENO, TCSANOW, &oldt);
+	return ch;
+}
+
+// selected[i] is a bool (formally an int) indicating whether options[i] was selected
 int multichoiceWStates(int n_options, char* options[], int* selected) {
 	if (n_options < 1) return -1;
 
 	static int current = 0; // index of currently selected option
 	for (;;) {
-		system("cls");
+		system("clear");
 
 		for (int i = 0; i < n_options; i++) {
 			char indexColor[9]; // the color applied to the index label
@@ -32,13 +47,16 @@ int multichoiceWStates(int n_options, char* options[], int* selected) {
 
 		unsigned char input = getch();
 		if (input == KEY_ENTER) return current;
-		else if (input == KEY_ESC) return -1; // used only in case of a softlock
-		else if (input == 224) { // KEY_UP and KEY_DOWN are 2 bytes wide, so we need a second getch()
+		else if (input == 27) { // KEY_UP and KEY_DOWN are 3 bytes wide, so we need two more getch()'s
 			unsigned char input2 = getch();
-			// KEY_UP
-			if (input2 == 80 && current < n_options - 1) current++;
+			unsigned char input3 = getch();
+
+			if (input2 != '[') continue;
+
 			// KEY_DOWN
-			else if (input2 == 72 && current > 0) current--;
+			if (input3 == 'B' && current < n_options - 1) current++;
+			// KEY_UP
+			else if (input3 == 'A' && current > 0) current--;
 		}
 		else if ('0' <= input && input <= '9') {
 			int index = input - '0'; // convert ['0'-'9'] to [0-9]
@@ -52,7 +70,7 @@ int multichoice(int n_options, char* options[]) {
 
 	static int current = 0; // index of currently selected option
 	for (;;) {
-		system("cls");
+		system("clear");
 
 		for (int i = 0; i < n_options; i++) {
 			char indexColor[9]; // the color applied to the index label
@@ -64,13 +82,16 @@ int multichoice(int n_options, char* options[]) {
 
 		unsigned char input = getch();
 		if (input == KEY_ENTER) return current;
-		else if (input == KEY_ESC) return -1; // used only in case of a softlock
-		else if (input == 224) { // KEY_UP and KEY_DOWN are 2 bytes wide, so we need a second getch()
+		else if (input == 27) { // KEY_UP and KEY_DOWN are 3 bytes wide, so we need two more getch()'s
 			unsigned char input2 = getch();
-			// KEY_UP
-			if (input2 == 80 && current < n_options - 1) current++;
+			unsigned char input3 = getch();
+
+			if (input2 != '[') continue;
+
 			// KEY_DOWN
-			else if (input2 == 72 && current > 0) current--;
+			if (input3 == 'B' && current < n_options - 1) current++;
+			// KEY_UP
+			else if (input3 == 'A' && current > 0) current--;
 		}
 		else if ('0' <= input && input <= '9') {
 			int index = input - '0'; // convert ['0'-'9'] to [0-9]
