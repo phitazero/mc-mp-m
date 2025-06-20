@@ -10,8 +10,38 @@
 #define MAX_PATH_LENGTH 256
 #define MAX_PATTERN_LENGTH 8
 
-// bring everything to camelCase
-#define copyFile CopyFile
+int copyFile(char* src, char* dst) {
+	FILE* fsrc;
+	FILE* fdst;
+
+	fsrc = fopen(src, "rb");
+	if (fsrc == NULL) return -1;
+
+	fdst = fopen(dst, "wb");
+	if (fdst == NULL) {
+		fclose(fsrc);
+		return -1;
+	}
+
+	char buffer[1024];
+	size_t n_read;
+	size_t n_written;
+
+	while ((n_read = fread(buffer, 1, 1024, fsrc)) > 0) {
+		n_written = fwrite(buffer, 1, n_read, fdst);
+		if (n_read != n_written) {
+			fclose(fsrc);
+			fclose(fdst);
+			return -1;
+		}
+	}
+
+	fclose(fsrc);
+
+	fclose(fdst);
+
+	return 0;
+}
 
 int isfile(char* path) {
 	FILE* file;
@@ -22,6 +52,18 @@ int isfile(char* path) {
 
 	// if we got to this point - file exists
 	fclose(file);
+	return 1;
+}
+
+int isdirectory(char* path) {
+	DIR* directory;
+	directory = opendir(path);
+
+	// couldn't open directoryectory - probably doesn't exist
+	if (directory == NULL) return 0;
+
+	// if we got to this point - directoryectory exists
+	closedir(directory);
 	return 1;
 }
 
