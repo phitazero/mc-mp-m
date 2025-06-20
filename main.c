@@ -1,18 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <windows.h>
+#include <pwd.h>
 #include "files.h"
 #include "scui.h"
 
 #define MAX_USERNAME_LENGTH 256
 #define MAX_PATH_LENGTH 256
-#define MAX_GETUSERNAME_ATTEMPTS 5
 
-#define MINECRAFT_DIRECTORY_TEMPLATE "C:/Users/%s/AppData/Roaming/.minecraft/"
-#define MODPACKS_DIRECTORY_TEMPLATE "C:/Users/%s/AppData/Roaming/.minecraft/mods/mcmpm-modpacks/"
-#define MODS_DIRECTORY_TEMPLATE "C:/Users/%s/AppData/Roaming/.minecraft/mods/"
+#define MINECRAFT_DIRECTORY_TEMPLATE "/home/%s/.minecraft/"
+#define MODPACKS_DIRECTORY_TEMPLATE "/home/%s/.minecraft/mods/mcmpm-modpacks/"
+#define MODS_DIRECTORY_TEMPLATE "/home/%s/.minecraft/mods/"
 
-#define VERSION "1.2.2"
+#define VERSION "2.0"
 
 #define C_LRED "\e[0;91m"
 #define C_YELLOW "\e[0;33m"
@@ -27,7 +26,6 @@
 #define ERR_OPERATION_FAIL -1
 #define ERR_ALREADY_EXISTS -2
 #define ERR_NOT_FOUND -3
-#define ERR_TMPFILE_FAIL -4
 #define ERR_NO_FILES -5
 #define ERR_ABORTED -6
 #define ERR_EDITED_VANILLA -7
@@ -37,11 +35,11 @@ char MINECRAFT_DIRECTORY[MAX_PATH_LENGTH];
 char MODPACKS_DIRECTORY[MAX_PATH_LENGTH];
 char MODS_DIRECTORY[MAX_PATH_LENGTH];
 
-// puts C:\Users\<user>\AppData\Roaming\.minecraft\mods\mcmpm-modpacks\<modpack name> in out
+// puts /home/<user>/.minecraft/mods/mcmpm-modpacks/<modpack name> in out
 void putModIndexPath(char* out, char* name) {
 	snprintf(out, MAX_PATH_LENGTH, "%s%s", MODPACKS_DIRECTORY, name);
 }
-// puts C:\Users\<user>\AppData\Roaming\.minecraft\mods\mcmpm-modpacks\<modpack name>.mp in out
+// puts /home/<user>/.minecraft/mods/mcmpm-modpacks/<modpack name>.mp in out
 // no i won't change every putModpackPath to putModIndexPath with adding .mp
 void putModpackPath(char* out, char* name) {
 	snprintf(out, MAX_PATH_LENGTH, "%s%s.mp", MODPACKS_DIRECTORY, name);
@@ -54,22 +52,19 @@ int init(char* username) {
 	snprintf(MODPACKS_DIRECTORY, MAX_PATH_LENGTH, MODPACKS_DIRECTORY_TEMPLATE, username);
 	snprintf(MODS_DIRECTORY, MAX_PATH_LENGTH, MODS_DIRECTORY_TEMPLATE, username);
 
+	if (!isdirectory(MINECRAFT_DIRECTORY)) return ERR_NOT_FOUND; // if clientId.txt doesn't exist then .minecraft directory does neither
+
 	FILE* file;
 	char path[MAX_PATH_LENGTH];
-	snprintf(path, MAX_PATH_LENGTH, "%sclientId.txt", MINECRAFT_DIRECTORY);
-	// the path should look like:
-	// C:\Users\<user>\AppData\Roaming\.minecraft\clientId.txt
-
-	if (!isfile(path)) return ERR_NOT_FOUND; // if clientId.txt doesn't exist then .minecraft folder does neither
 
 	putModpackPath(path, "vanilla");
 
-	if (isfile(path)) return SUCCESS; // if vanilla.mp modpack exists then modpacks folder does either
+	if (isfile(path)) return SUCCESS; // if vanilla.mp modpack exists then modpacks directory does either
 
 	int maxCmdLength = MAX_PATH_LENGTH + 8;
 	char cmd[maxCmdLength];
 
-	// create the mcmpm-modpacks folder
+	// create the mcmpm-modpacks directory
 	snprintf(cmd, maxCmdLength, "mkdir \"%s\"", MODPACKS_DIRECTORY);
 	system(cmd);
 
@@ -92,7 +87,7 @@ void printHelpText(char* exeName) {
 	printf("(Mods in index can be accessed by using <direcory> 'index'\n");
 	printf("and currently active mods are accessed using 'mods')\n");
 	printf("%s edit <modpack> - remove chosen mods from <modpack>\n", exeName);
-	printf("%s path - print the path to configuration folder.\n", exeName);
+	printf("%s path - print the path to configuration directory.\n", exeName);
 	printf("%s current - show currently active mods.\n", exeName);
 	printf("%s load <modpack> - load <modpack>.\n", exeName);
 }
@@ -104,7 +99,7 @@ void freeStrArray(char** array, int n_items) {
 void listModpacks() {
 	int n_modpacks = getNFiles(MODPACKS_DIRECTORY, "mp");
 	char* modpacks[n_modpacks];
-	findFiles(modpacks, "mp", n_modpacks, MODPACKS_DIRECTORY);
+	findFiles(modpacks, "mp", MODPACKS_DIRECTORY);
 	printf("Modpacks:\n");
 	for (int i = 0; i < n_modpacks; i++) {
 		char name[strlen(modpacks[i])];
@@ -123,8 +118,8 @@ int createModpack(char* name) {
 
 	// check if modpack to be created already exists
 	file = fopen(path, "r");
+
 	if (file != NULL) { return ERR_ALREADY_EXISTS; }
-	fclose(file);
 
 	file = fopen(path, "w");
 	if (file == NULL) { return ERR_OPERATION_FAIL; } // couldn't create file
@@ -138,15 +133,10 @@ int listModpackMods(char* name) {
 
 	FILE* file;
 
-	file = fopenNoCR(path, "r");
+	file = fopen(path, "r");
 
-	// if either modpack doesn't exist or failed to create tmpfile
-	if (file == NULL) {
-		if (!isfile(path)) return ERR_NOT_FOUND; // modpack doesn't exist
-
-		// if the modpack exists, then tmpfile() failed
-		return ERR_TMPFILE_FAIL;
-	}
+	// if modpack doesn't exist
+	if (file == NULL) return ERR_NOT_FOUND;
 
 	int n_lines = getNLines(file);
 	char* lines[n_lines];
@@ -197,7 +187,7 @@ int addMods(char* name, char* directory) {
 	options[0] = finishOption;
 
 	// 0th index in options is reserved for "[Finish]", so start writing from the 1st index
-	findFiles(options + 1, "jar", n_jars, directory);
+	findFiles(options + 1, "jar", directory);
 
 	// initialize the array of chosen option with none chosen by default
 	int selectedStatuses[n_options];
@@ -247,12 +237,12 @@ int addMods(char* name, char* directory) {
 		// we don't want to copy files to themselves
 		if (strcmp(srcPath, dstPath) == 0) continue;
 
-		int status = copyFile(srcPath, dstPath, 0);
-		if (status == 0) return ERR_OPERATION_FAIL;
+		int status = copyFile(srcPath, dstPath);
+		if (status != 0) return ERR_OPERATION_FAIL;
 	}
 
 	// in variable path we have path to corresponding .mp
-	FILE* file = fopenNoCR(path, "r");
+	FILE* file = fopen(path, "r");
 	if (file == NULL) return ERR_OPERATION_FAIL;
 
 	int n_lines = getNLines(file);
@@ -296,7 +286,7 @@ int editModpack(char* name) {
 	// check if modpack exists
 	if (!isfile(path)) return ERR_NOT_FOUND;
 
-	FILE* file = fopenNoCR(path, "r");
+	FILE* file = fopen(path, "r");
 
 	int n_modpacks = getNLines(file);
 
@@ -338,9 +328,6 @@ int editModpack(char* name) {
 	int n_removed = n_options - 1; // don't count "[Finish]" option
 	for (int i = 0; i < n_options; i++) { n_removed -= selectedStatuses[i]; }
 
-	for (int i = 0; i < n_options; i++) { printf("%s|\n", options[i]); }
-	puts("end here");
-
 	file = fopen(path, "w");
 	if (file == NULL) return ERR_OPERATION_FAIL;
 	fwriteLines(options, n_options, file);
@@ -358,15 +345,16 @@ int editModpack(char* name) {
 void directoryFormat(char* directory) {
 	if (strcmp(directory, "index") == 0) { // "index" means the mcmpm directory
 		strcpy(directory, MODPACKS_DIRECTORY);
-	} else if (strcmp(directory, "mods") == 0) { // "mods" is the default minecraft mods folder
+	} else if (strcmp(directory, "mods") == 0) { // "mods" is the default minecraft mods directory
 		strcpy(directory, MODS_DIRECTORY);
-	} else {
-		int length = strlen(directory);
-		if (directory[length - 1] != '/') { // if doesn't end with / add it
-			directory[length] = '/';
-			directory[length + 1] = '\0';
-		}
 	}
+	// else {
+	// 	int length = strlen(directory);
+	// 	if (directory[length - 1] != '/') { // if doesn't end with / add it
+	// 		directory[length] = '/';
+	// 		directory[length + 1] = '\0';
+	// 	}
+	// }
 }
 
 // compares arrays of strings (order doesn't matter)
@@ -385,17 +373,17 @@ int strarrcmp(char** arr1, char** arr2, int length) {
 void printCurrentModpack(char* mods[], int n_mods) {
 	int n_modpacks = getNFiles(MODPACKS_DIRECTORY, "mp");
 	char* modpacks[n_modpacks];
-	findFiles(modpacks, "mp", n_modpacks, MODPACKS_DIRECTORY);
+	findFiles(modpacks, "mp", MODPACKS_DIRECTORY);
 
 	for (int i = 0; i < n_modpacks; i++) {
 		char* modpack = modpacks[i];
 
 		char path[MAX_PATH_LENGTH];
 		snprintf(path, MAX_PATH_LENGTH, "%s%s", MODPACKS_DIRECTORY, modpack);
-		FILE* file = fopenNoCR(path, "r");
+		FILE* file = fopen(path, "r");
 
 		// mpmod - a mod saved in the modpack
-		// mod - a mod in mods folder
+		// mod - a mod in mods directory
 		int n_mpmods = getNLines(file);
 
 		if (n_mpmods != n_mods) continue;
@@ -421,7 +409,7 @@ void listCurrentMods() {
 	}
 
 	char* mods[n_mods];
-	findFiles(mods, "jar", n_mods, MODS_DIRECTORY);
+	findFiles(mods, "jar", MODS_DIRECTORY);
 
 	puts("Currently active mods:");
 	for (int i = 0; i < n_mods; i++) { printf("   - %s\n", mods[i]); }
@@ -435,7 +423,7 @@ void deleteCurrentMods() {
 	int n_mods = getNFiles(MODS_DIRECTORY, "jar");
 
 	char* mods[n_mods];
-	findFiles(mods, "jar", n_mods, MODS_DIRECTORY);
+	findFiles(mods, "jar", MODS_DIRECTORY);
 
 	for (int i = 0; i < n_mods; i++) {
 		char* mod = mods[i];
@@ -460,7 +448,7 @@ int selectModpack(char* out) {
 	options[0] = cancelOption;
 
 	// leaving 0th place for "[Cancel]" option
-	findFiles(options + 1, "mp", n_modpacks, MODPACKS_DIRECTORY);
+	findFiles(options + 1, "mp", MODPACKS_DIRECTORY);
 
 	// remove .mp extension at the end for all modpacks
 	for (int i = 1; i < n_options; i++) {
@@ -500,17 +488,10 @@ int loadModpack(char* name) {
 
 	FILE* file;
 
-	file = fopenNoCR(path, "r");
+	file = fopen(path, "r");
 
-	// if failed to create tmpfile
-	if (file == NULL) {
-		file = fopen(path, "r"); // test if modpack exists
-
-		if (file == NULL) return ERR_NOT_FOUND; // modpack doesn't exist
-
-		fclose(file);
-		return ERR_TMPFILE_FAIL;
-	}
+	// if modpack doesn't exist
+	if (file == NULL) return ERR_NOT_FOUND;
 
 	int n_lines = getNLines(file);
 
@@ -549,11 +530,8 @@ int loadModpack(char* name) {
 		putModIndexPath(srcPath, mod);
 		snprintf(dstPath, MAX_PATH_LENGTH, "%s%s", MODS_DIRECTORY, mod);
 
-		int status = copyFile(srcPath, dstPath, 0);
-		if (status == 0) { // copyfile return 0 in error
-			printf(C_LRED"errcode: %d\n"C_RESET, GetLastError());
-			return ERR_OPERATION_FAIL;
-		}
+		int status = copyFile(srcPath, dstPath);
+		if (status != 0) return ERR_OPERATION_FAIL;
 	}
 
 	if (allExist) return SUCCESS;
@@ -566,19 +544,8 @@ int main(int argc, char* argv[])
 	char* exeName = argv[0];
 
 	char username[MAX_USERNAME_LENGTH];
-	unsigned long usernameLength;
-	int n_attempts = 0;
-
-	// damn GetUserName can return an empty username ("\0") and set usernameLength
-	// to twice (assumption, i was getting 12 instead of 6) as real username length (with '\0')
-	do {
-		GetUserName(username, &usernameLength);
-		n_attempts++;
-		if (n_attempts > MAX_GETUSERNAME_ATTEMPTS) {
-			printf(C_LRED"Fatal error: Damn GetUserName() refuses to work normally, can't do anything about it."C_RESET);
-			return 0;
-		}
-	} while (usernameLength != strlen(username) + 1);
+	
+	strcpy(username, getpwuid(getuid())->pw_name);
 
 	// INITIALISATION
 	int status = init(username);
@@ -586,7 +553,7 @@ int main(int argc, char* argv[])
 		printf(C_LRED"Fatal error: Couldn't create vanilla.mp (default modpack).\n"C_RESET);
 		return 0;
 	} else if (status == ERR_NOT_FOUND) {	
-		printf(C_LRED"Fatal error: No .minecraft folder found.\n"C_RESET);
+		printf(C_LRED"Fatal error: No .minecraft directory found.\n"C_RESET);
 		return 0;
 	} else if (status == SUCCESS) {
 		printf("Found an existing configuration.\n");
@@ -666,9 +633,7 @@ int main(int argc, char* argv[])
 			}
 		} else if (strcmp(command, "list") == 0) {
 			int status = listModpackMods(arg);
-			if (status == ERR_TMPFILE_FAIL) {
-				printf(C_LRED"Fatal error: failed to create temporary file! Try again."C_RESET);
-			} else if (status == ERR_NOT_FOUND) {
+			if (status == ERR_NOT_FOUND) {
 				printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg);
 			}
 
@@ -678,9 +643,6 @@ int main(int argc, char* argv[])
 				printf(C_LRED"Fatal error: you can't edit 'vanilla'!"C_RESET);
 			} else if (status == ERR_NOT_FOUND) {
 				printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg);
-			} else if (status == ERR_ABORTED) {
-				printf(C_LRED"Fatal error: operation aborted.\n");
-				printf("Don't press ESC in multichoice menus, only in case of a softlock."C_RESET);
 			} else if (status == ERR_OPERATION_FAIL) {
 				printf(C_LRED"Fatal error: Couldn't write to modpack!"C_RESET);
 			} else if (status == SUCCESS) {
@@ -693,8 +655,6 @@ int main(int argc, char* argv[])
 			int status = loadModpack(arg);
 			if (status == ERR_OPERATION_FAIL) {
 				printf(C_LRED"Fatal error: Failed to copy some files!"C_RESET);
-			} else if (status == ERR_TMPFILE_FAIL) {
-				printf(C_LRED"Fatal error: failed to create temporary file! Try again."C_RESET);
 			} else if (status == ERR_ABORTED) {
 				printf(C_LRED"User aborted."C_RESET);
 			} else if (status == SUCCESS) {
@@ -727,10 +687,7 @@ int main(int argc, char* argv[])
 				printf(C_LRED"Fatal error: you can't edit 'vanilla'!"C_RESET);
 			} else if (status == ERR_NOT_FOUND) {
 				printf(C_LRED"Fatal error: '%s' doesn't exist!"C_RESET, arg1);
-			} else if (status == ERR_ABORTED) {
-				printf(C_LRED"Fatal error: operation aborted.\n");
-				printf("Don't press ESC in multichoice menus, only in case of a softlock."C_RESET);
-			} else if (status == ERR_OPERATION_FAIL) {
+			}  else if (status == ERR_OPERATION_FAIL) {
 				printf(C_LRED"Fatal error: Couldn't copy files or write to modpack!"C_RESET);
 			} else if (status == SUCCESS) {
 				printf(C_LGREEN"Successfully added mods to '%s'."C_RESET, arg1);
