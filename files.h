@@ -1,10 +1,14 @@
 // to work with files
 
-#include <windows.h>
+#include <stdio.h>
 #include <string.h>
-#include <io.h>
+#include <fnmatch.h>
+#include <dirent.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #define MAX_PATH_LENGTH 256
+#define MAX_PATTERN_LENGTH 8
 
 // bring everything to camelCase
 #define copyFile CopyFile
@@ -23,70 +27,57 @@ int isfile(char* path) {
 
 // get number of .<ext> files in a directory
 int getNFiles(char* directory, char ext[]) {
-	WIN32_FIND_DATA findFileData;
+	DIR *dir;
+	struct dirent *entry;
 
-	char path[MAX_PATH_LENGTH];
-	snprintf(path, MAX_PATH_LENGTH, "%s*.%s", directory, ext);
+	dir = opendir(directory);
+	if (dir == NULL) {
+		return 0;
+	}
 
-	HANDLE handleFind = FindFirstFile(path, &findFileData);
-	if (handleFind == INVALID_HANDLE_VALUE) return 0;
+	char pattern[MAX_PATTERN_LENGTH];
+	snprintf(pattern, MAX_PATTERN_LENGTH, "*.%s", ext);
 
-	// if we've got to this point we already have a file, found by FindFirstFile
-	int n_files = 1;
+	int n_files = 0;
 
-	while (FindNextFile(handleFind, &findFileData) != 0) n_files++;
+	while ((entry = readdir(dir)) != NULL) {
+		if (fnmatch(pattern, entry->d_name, 0) == 0)
+			n_files++;
+	}
+
+	closedir(dir);
 
 	return n_files;
 }
 
 // puts the pointer to the array of pointers to malloc()'ed filenames of .<ext> files into out_files
-int findFiles(char** out_files, char ext[], int n_files, char* directory) {
-	WIN32_FIND_DATA findFileData;
+int findFiles(char** out_files, char ext[], char* directory) {
+	DIR *dir;
+	struct dirent *entry;
 
-	char path[MAX_PATH_LENGTH];
-	snprintf(path, MAX_PATH_LENGTH, "%s*.%s", directory, ext);
-
-	HANDLE handleFind = FindFirstFile(path, &findFileData);
-	if (handleFind == INVALID_HANDLE_VALUE) return -1;
-
-	for (int i = 0; i < n_files; i++) {
-		char* filename = (char*) malloc(strlen(findFileData.cFileName) + 1);
-		strcpy(filename, findFileData.cFileName);
-		out_files[i] = filename;
-
-		FindNextFile(handleFind, &findFileData);
+	dir = opendir(directory);
+	if (dir == NULL) {
+		return -1;
 	}
+
+	char pattern[MAX_PATTERN_LENGTH];
+	snprintf(pattern, MAX_PATTERN_LENGTH, "*.%s", ext);
 	
+	int n_foundFiles = 0;
+
+	while ((entry = readdir(dir)) != NULL) {
+		if (fnmatch(pattern, entry->d_name, 0) != 0) continue;
+		char* filename = (char*) malloc(strlen(entry->d_name) + 1);
+		strcpy(filename, entry->d_name);
+		out_files[n_foundFiles] = filename;
+		
+		n_foundFiles++;
+	}
+
+	closedir(dir);
+
 	return 0;
 }
-
-// opens file ignoring '\r's
-FILE* fopenNoCR(char* filename, char* mode) {
-	if (!mode || mode[0] != 'r') {
-		return fopen(filename, mode);  // we care only about reading
-	}
-
-	FILE* originalFile = fopen(filename, "rb");  // open in binary to see '\r'
-	if (!originalFile) return NULL;
-
-	FILE* tempFile = tmpfile();
-	if (!tempFile) {
-		fclose(originalFile);
-		return NULL;
-	}
-
-	// copy ignoring '\r'
-	char c;
-	while ((c = fgetc(originalFile)) != EOF) {
-		if (c != '\r') fputc(c, tempFile);
-	}
-
-	fclose(originalFile);
-	rewind(tempFile); // prepare for further usage
-
-	return tempFile;
-}
-
 
 int getFileLength(FILE* file) {
 	fseek(file, 0, SEEK_END);
@@ -151,12 +142,10 @@ void fwriteLines(char** lines, int n_lines, FILE* file) {
 			}
 		} else if (i == n_lines - 1) { // if it's the last line, it's empty, we left a \n at the end
 			fflush(file);
-			int fd = _fileno(file);
-			// After fputc the cursor is after the last byte, (considering indexing differences) it's equal
-			// to current size of file. Subtract 2 to remove \n and \r which windows (hate it) adds
-			int newFileSize = ftell(file) - 2;
-			int status = _chsize(fd, newFileSize);
-			printf("%d\n", status);
+			int fd = fileno(file);
+			// On Linux, newline is just '\n', so subtract only 1
+			int newFileSize = ftell(file) - 1;
+			ftruncate(fd, newFileSize);
 		}
 	}
 }
