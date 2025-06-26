@@ -348,13 +348,13 @@ void directoryFormat(char* directory) {
 	} else if (strcmp(directory, "mods") == 0) { // "mods" is the default minecraft mods directory
 		strcpy(directory, MODS_DIRECTORY);
 	}
-	// else {
-	// 	int length = strlen(directory);
-	// 	if (directory[length - 1] != '/') { // if doesn't end with / add it
-	// 		directory[length] = '/';
-	// 		directory[length + 1] = '\0';
-	// 	}
-	// }
+	else {
+		int length = strlen(directory);
+		if (directory[length - 1] != '/') { // if doesn't end with / add it
+			directory[length] = '/';
+			directory[length + 1] = '\0';
+		}
+	}
 }
 
 // compares arrays of strings (order doesn't matter)
