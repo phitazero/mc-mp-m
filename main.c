@@ -388,10 +388,10 @@ void printCurrentModpack(char* mods[], int n_mods) {
 
 		if (n_mpmods != n_mods) continue;
 
-		char* npmods[n_mpmods];
-		freadLines(npmods, n_mpmods, file);
+		char* mpmods[n_mpmods];
+		freadLines(mpmods, n_mpmods, file);
 
-		if (strarrcmp(mods, npmods, n_mods) == 0) {
+		if (strarrcmp(mods, mpmods, n_mods) == 0) {
 			modpack[strlen(modpack) - 3] = '\0'; // remove .mp at the end
 			printf("Currently loaded modpack is '%s'.\n", modpack);
 			return;	
