@@ -137,7 +137,8 @@ int getNLines(FILE* file) {
 	rewind(file);
 
 	int n_lines = 1;
-	for (int i = 0; i < fileLength; i++) n_lines += (buffer[i] == '\n');
+	for (int i = 0; i < fileLength; i++)
+		n_lines += (buffer[i] == '\n' && i+1 != fileLength);
 
 	return n_lines;
 }
