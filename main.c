@@ -11,7 +11,7 @@
 #define MODPACKS_DIRECTORY_TEMPLATE "/home/%s/.minecraft/mods/mcmpm-modpacks/"
 #define MODS_DIRECTORY_TEMPLATE "/home/%s/.minecraft/mods/"
 
-#define VERSION "2.0"
+#define VERSION "2.2"
 
 #define C_LRED "\e[0;91m"
 #define C_YELLOW "\e[0;33m"
